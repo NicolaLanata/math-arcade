@@ -1,0 +1,568 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Universal Atomic Division</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+  /* --- GLOBAL STYLES --- */
+  * { box-sizing: border-box; }
+  
+  body {
+      margin: 0; padding: 0; background: #000; color: white;
+      font-family: 'Courier New', Courier, monospace;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; 
+      height: 100vh; overflow: hidden; user-select: none;
+  }
+  
+  button {
+      font-family: 'Courier New', Courier, monospace; font-weight: bold;
+      cursor: pointer; transition: all 0.2s; border: none; outline: none;
+  }
+  button:active { transform: scale(0.98); }
+
+  /* --- SCREENS --- */
+  .screen {
+      width: 1000px; max-width: 95%; height: 600px;
+      background: #0a0a15; border: 2px solid #333; border-radius: 12px;
+      box-shadow: 0 0 50px rgba(0, 200, 255, 0.2);
+      display: none; flex-direction: column; align-items: center; 
+      position: relative; overflow: hidden;
+  }
+  .screen.active { display: flex; }
+
+  /* Padding top ensures the exit button never overlaps content */
+  #gameScreen {
+      justify-content: flex-start; 
+      padding-top: 100px; 
+  }
+
+  #setupScreen {
+      justify-content: center;
+  }
+
+  /* --- SETUP SCREEN --- */
+  h1 { color: #00f3ff; text-shadow: 0 0 15px rgba(0, 243, 255, 0.5); margin-bottom: 30px; font-size: 36px; text-transform: uppercase; letter-spacing: 2px; }
+  
+  .control-panel {
+      display: flex; gap: 40px; margin-bottom: 30px;
+  }
+  .input-group { display: flex; flex-direction: column; align-items: center; }
+  .input-label { color: #aaa; margin-bottom: 10px; font-size: 14px; text-transform: uppercase; }
+  
+  input[type="number"] {
+      padding: 15px; font-size: 30px; width: 120px; text-align: center;
+      background: #050510; color: #00f3ff; border: 2px solid #333; border-radius: 8px;
+  }
+  input:focus { border-color: #00f3ff; outline: none; box-shadow: 0 0 10px rgba(0,243,255,0.2); }
+
+  #elementPreview {
+      height: 40px; font-size: 20px; color: #f1c40f; font-weight: bold; text-shadow: 0 0 5px #f1c40f;
+      margin-top: 10px;
+  }
+
+  .start-btn {
+      padding: 15px 50px; font-size: 22px; background: rgba(0, 243, 255, 0.15); 
+      color: #00f3ff; border: 1px solid #00f3ff; border-radius: 6px; text-transform: uppercase;
+  }
+  .start-btn:hover { background: #00f3ff; color: #000; box-shadow: 0 0 20px rgba(0, 243, 255, 0.6); }
+
+  /* --- GAME SCREEN --- */
+  .anim-box {
+      width: 90%; height: 420px; border: 2px solid #333;
+      background: radial-gradient(circle at center, #121225 0%, #000000 100%);
+      position: relative; border-radius: 8px; overflow: hidden; margin-bottom: 20px;
+  }
+  
+  /* Stars */
+  .star { position: absolute; background: white; border-radius: 50%; opacity: 0.5; animation: twinkle 4s infinite; }
+  @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+
+  /* HUD */
+  .hud { width: 90%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; height: 40px;}
+  .status-text { font-size: 24px; color: #00f3ff; font-weight: bold; text-shadow: 0 0 5px rgba(0,243,255,0.5); }
+  .math-display { font-size: 28px; color: #f1c40f; opacity: 0; transition: opacity 0.5s; font-weight: bold; }
+
+  /* BINS */
+  .bins-container {
+      position: absolute; bottom: 0; left: 20px; right: 20px; height: 180px;
+      display: flex; justify-content: center; align-items: flex-end; gap: 2px;
+  }
+  .bin {
+      flex: 1; max-width: 120px; height: 170px; position: relative;
+      background: linear-gradient(to top, rgba(0, 243, 255, 0.05), transparent);
+      border-bottom: 2px solid #00f3ff; transition: border-color 0.3s;
+  }
+  .bin-label {
+      position: absolute; bottom: 5px; width: 100%; text-align: center;
+      font-size: 10px; color: #00f3ff; font-weight: bold;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  
+  /* CUTOFF LINE */
+  .cutoff-line {
+      position: absolute; left: 20px; right: 20px; height: 2px;
+      border-top: 2px dashed #e74c3c; z-index: 5; opacity: 0; pointer-events: none; transition: opacity 1s;
+  }
+  .cutoff-label {
+      position: absolute; right: 0; top: -25px; background: #000; padding: 2px 6px;
+      color: #e74c3c; font-size: 12px; font-weight: bold; border: 1px solid #e74c3c;
+  }
+
+  /* --- ATOMIC ASSETS --- */
+  .electron { 
+      position: absolute; width: 12px; height: 12px; border-radius: 50%;
+      background: #00f3ff; box-shadow: 0 0 8px #00f3ff; z-index: 20; /* Electrons below label */
+      transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  
+  .nucleus {
+    position: absolute; width: 50px; height: 50px; border-radius: 50%;
+    background: radial-gradient(circle, #ff7e5f 30%, #feb47b 100%);
+    box-shadow: 0 0 20px rgba(255, 126, 95, 0.5);
+    z-index: 5; transform: translate(-50%, -50%);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 16px; color: #330000;
+    opacity: 0; transition: opacity 0.5s;
+  }
+  
+  .atom-label {
+      position: absolute; font-size: 12px; font-weight: bold; color: #00f3ff;
+      transform: translate(-50%, -50%); opacity: 0; transition: opacity 1s; pointer-events: none;
+      z-index: 30; /* Make sure it's on top */
+      text-shadow: 0 0 5px #00f3ff;
+  }
+
+  /* Controls */
+  .action-btn {
+      padding: 12px 30px; font-size: 18px; background: rgba(0,243,255,0.1); 
+      color: #00f3ff; border: 1px solid #00f3ff; border-radius: 6px;
+  }
+  .action-btn:hover { background: #00f3ff; color: #000; box-shadow: 0 0 15px #00f3ff; }
+  .action-btn:disabled { border-color: #555; color: #555; background: transparent; cursor: default; box-shadow: none; }
+  
+  .back-btn {
+      position: absolute; top: 20px; left: 20px; padding: 10px 20px; background: #333; color: #aaa; border-radius: 5px; font-size: 14px;
+      z-index: 100;
+  }
+  .back-btn:hover { background: #444; color: white; }
+
+</style>
+
+  <meta name="theme-color" content="#0a1220">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
+  <link rel="icon" href="../assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/arcade.css">
+
+</head>
+<body class="arcade arcade-game arcade-standard" data-arcade-page="game">
+
+<div id="setupScreen" class="screen active">
+    <h1>Universal Atomic Division</h1>
+    
+    <div class="control-panel">
+        <div class="input-group">
+            <div class="input-label">Total Electrons</div>
+            <input type="number" id="electronInput" min="1" max="250" value="200">
+        </div>
+        
+        <div class="input-group">
+            <div class="input-label">Atomic Number (Divisor)</div>
+            <input type="number" id="atomicNumInput" min="1" max="118" value="64" oninput="updatePreview()">
+        </div>
+    </div>
+    
+    <div id="elementPreview">Target: Gadolinium (Gd)</div>
+    
+    <button class="start-btn" onclick="startLab()">Initialize System</button>
+</div>
+
+<div id="gameScreen" class="screen">
+    <button class="back-btn" onclick="goHome()">Exit Lab</button>
+    
+    <div class="hud">
+        <div class="status-text" id="statusText">System Ready</div>
+        <div class="math-display" id="mathDisplay"></div>
+    </div>
+
+    <div class="anim-box" id="animBox">
+        <div class="cutoff-line" id="cutLine"><div class="cutoff-label" id="cutLabel">LIMIT</div></div>
+        <div class="bins-container" id="binsArea"></div>
+    </div>
+
+    <button id="actionBtn" class="action-btn" onclick="handleAction()">1. DISTRIBUTE ELECTRONS</button>
+</div>
+
+<script>
+    // --- DATABASE: FULL PERIODIC TABLE ---
+    const PERIODIC_TABLE = {
+        1: {n:"Hydrogen",s:"H"}, 2: {n:"Helium",s:"He"}, 3: {n:"Lithium",s:"Li"}, 4: {n:"Beryllium",s:"Be"},
+        5: {n:"Boron",s:"B"}, 6: {n:"Carbon",s:"C"}, 7: {n:"Nitrogen",s:"N"}, 8: {n:"Oxygen",s:"O"},
+        9: {n:"Fluorine",s:"F"}, 10: {n:"Neon",s:"Ne"}, 11: {n:"Sodium",s:"Na"}, 12: {n:"Magnesium",s:"Mg"},
+        13: {n:"Aluminum",s:"Al"}, 14: {n:"Silicon",s:"Si"}, 15: {n:"Phosphorus",s:"P"}, 16: {n:"Sulfur",s:"S"},
+        17: {n:"Chlorine",s:"Cl"}, 18: {n:"Argon",s:"Ar"}, 19: {n:"Potassium",s:"K"}, 20: {n:"Calcium",s:"Ca"},
+        21: {n:"Scandium",s:"Sc"}, 22: {n:"Titanium",s:"Ti"}, 23: {n:"Vanadium",s:"V"}, 24: {n:"Chromium",s:"Cr"},
+        25: {n:"Manganese",s:"Mn"}, 26: {n:"Iron",s:"Fe"}, 27: {n:"Cobalt",s:"Co"}, 28: {n:"Nickel",s:"Ni"},
+        29: {n:"Copper",s:"Cu"}, 30: {n:"Zinc",s:"Zn"}, 31: {n:"Gallium",s:"Ga"}, 32: {n:"Germanium",s:"Ge"},
+        33: {n:"Arsenic",s:"As"}, 34: {n:"Selenium",s:"Se"}, 35: {n:"Bromine",s:"Br"}, 36: {n:"Krypton",s:"Kr"},
+        37: {n:"Rubidium",s:"Rb"}, 38: {n:"Strontium",s:"Sr"}, 39: {n:"Yttrium",s:"Y"}, 40: {n:"Zirconium",s:"Zr"},
+        41: {n:"Niobium",s:"Nb"}, 42: {n:"Molybdenum",s:"Mo"}, 43: {n:"Technetium",s:"Tc"}, 44: {n:"Ruthenium",s:"Ru"},
+        45: {n:"Rhodium",s:"Rh"}, 46: {n:"Palladium",s:"Pd"}, 47: {n:"Silver",s:"Ag"}, 48: {n:"Cadmium",s:"Cd"},
+        49: {n:"Indium",s:"In"}, 50: {n:"Tin",s:"Sn"}, 51: {n:"Antimony",s:"Sb"}, 52: {n:"Tellurium",s:"Te"},
+        53: {n:"Iodine",s:"I"}, 54: {n:"Xenon",s:"Xe"}, 55: {n:"Cesium",s:"Cs"}, 56: {n:"Barium",s:"Ba"},
+        57: {n:"Lanthanum",s:"La"}, 58: {n:"Cerium",s:"Ce"}, 59: {n:"Praseodymium",s:"Pr"}, 60: {n:"Neodymium",s:"Nd"},
+        61: {n:"Promethium",s:"Pm"}, 62: {n:"Samarium",s:"Sm"}, 63: {n:"Europium",s:"Eu"}, 64: {n:"Gadolinium",s:"Gd"},
+        65: {n:"Terbium",s:"Tb"}, 66: {n:"Dysprosium",s:"Dy"}, 67: {n:"Holmium",s:"Ho"}, 68: {n:"Erbium",s:"Er"},
+        69: {n:"Thulium",s:"Tm"}, 70: {n:"Ytterbium",s:"Yb"}, 71: {n:"Lutetium",s:"Lu"}, 72: {n:"Hafnium",s:"Hf"},
+        73: {n:"Tantalum",s:"Ta"}, 74: {n:"Tungsten",s:"W"}, 75: {n:"Rhenium",s:"Re"}, 76: {n:"Osmium",s:"Os"},
+        77: {n:"Iridium",s:"Ir"}, 78: {n:"Platinum",s:"Pt"}, 79: {n:"Gold",s:"Au"}, 80: {n:"Mercury",s:"Hg"},
+        81: {n:"Thallium",s:"Tl"}, 82: {n:"Lead",s:"Pb"}, 83: {n:"Bismuth",s:"Bi"}, 84: {n:"Polonium",s:"Po"},
+        85: {n:"Astatine",s:"At"}, 86: {n:"Radon",s:"Rn"}, 87: {n:"Francium",s:"Fr"}, 88: {n:"Radium",s:"Ra"},
+        89: {n:"Actinium",s:"Ac"}, 90: {n:"Thorium",s:"Th"}, 91: {n:"Protactinium",s:"Pa"}, 92: {n:"Uranium",s:"U"},
+        93: {n:"Neptunium",s:"Np"}, 94: {n:"Plutonium",s:"Pu"}, 95: {n:"Americium",s:"Am"}, 96: {n:"Curium",s:"Cm"},
+        97: {n:"Berkelium",s:"Bk"}, 98: {n:"Californium",s:"Cf"}, 99: {n:"Einsteinium",s:"Es"}, 100: {n:"Fermium",s:"Fm"},
+        101: {n:"Mendelevium",s:"Md"}, 102: {n:"Nobelium",s:"No"}, 103: {n:"Lawrencium",s:"Lr"}, 104: {n:"Rutherfordium",s:"Rf"},
+        105: {n:"Dubnium",s:"Db"}, 106: {n:"Seaborgium",s:"Sg"}, 107: {n:"Bohrium",s:"Bh"}, 108: {n:"Hassium",s:"Hs"},
+        109: {n:"Meitnerium",s:"Mt"}, 110: {n:"Darmstadtium",s:"Ds"}, 111: {n:"Roentgenium",s:"Rg"}, 112: {n:"Copernicium",s:"Cn"},
+        113: {n:"Nihonium",s:"Nh"}, 114: {n:"Flerovium",s:"Fl"}, 115: {n:"Moscovium",s:"Mc"}, 116: {n:"Livermorium",s:"Lv"},
+        117: {n:"Tennessine",s:"Ts"}, 118: {n:"Oganesson",s:"Og"}
+    };
+
+    // --- STATE ---
+    let totalElectrons = 0;
+    let atomicNumber = 0;
+    let elementData = {};
+    
+    let electronsArr = [];
+    let bins = [];
+    let step = 0; 
+    let finishedAtoms = 0;
+    let minHeight = 0;
+
+    // --- DOM ---
+    const screens = { setup: document.getElementById('setupScreen'), game: document.getElementById('gameScreen') };
+    const ui = {
+        eInput: document.getElementById('electronInput'),
+        aInput: document.getElementById('atomicNumInput'),
+        preview: document.getElementById('elementPreview'),
+        box: document.getElementById('animBox'),
+        binsArea: document.getElementById('binsArea'),
+        status: document.getElementById('statusText'),
+        math: document.getElementById('mathDisplay'),
+        cutLine: document.getElementById('cutLine'),
+        cutLabel: document.getElementById('cutLabel'),
+        actionBtn: document.getElementById('actionBtn')
+    };
+
+    // --- SETUP LOGIC ---
+    function updatePreview() {
+        let val = parseInt(ui.aInput.value);
+        if(!val) return;
+        
+        // Safety: ensure it is within 1-118 (Periodic table limit)
+        if(val > 118) { val = 118; ui.aInput.value = 118; }
+        if(val < 1) { val = 1; ui.aInput.value = 1; }
+        
+        const el = PERIODIC_TABLE[val];
+        if(el) {
+            ui.preview.innerText = `Target: ${el.n} (${el.s})`;
+        } else {
+            ui.preview.innerText = `Target: Unknown`;
+        }
+    }
+
+    function startLab() {
+        totalElectrons = parseInt(ui.eInput.value) || 10;
+        atomicNumber = parseInt(ui.aInput.value) || 2;
+        
+        // Cap only if excessively high for browser perf (e.g., 300 electrons)
+        if(totalElectrons > 300) totalElectrons = 300;
+        
+        elementData = PERIODIC_TABLE[atomicNumber];
+        
+        // Switch screens FIRST to correct layout dimensions
+        screens.setup.classList.remove('active');
+        screens.game.classList.add('active');
+        
+        // Delay logic slightly to allow layout paint
+        setTimeout(setupBoard, 50);
+    }
+
+    function goHome() {
+        screens.game.classList.remove('active');
+        screens.setup.classList.add('active');
+        // Clean up
+        ui.box.querySelectorAll('.electron, .nucleus, .atom-label').forEach(e => e.remove());
+        ui.binsArea.innerHTML = '';
+    }
+
+    // --- GAMEBOARD SETUP ---
+    function setupBoard() {
+        step = 0;
+        finishedAtoms = 0;
+        electronsArr = [];
+        bins = Array.from({length: atomicNumber}, () => []);
+
+        // Reset UI
+        ui.status.innerText = `Input: ${totalElectrons} Electrons`;
+        ui.math.innerHTML = "";
+        ui.math.style.opacity = 0;
+        ui.cutLine.style.opacity = 0;
+        ui.actionBtn.innerText = "1. DISTRIBUTE";
+        ui.actionBtn.disabled = false;
+        ui.actionBtn.style.display = "inline-block";
+
+        // Clear Board
+        ui.box.querySelectorAll('.electron, .nucleus, .atom-label, .star').forEach(e => e.remove());
+        ui.binsArea.innerHTML = '';
+
+        // Stars
+        for(let s=0; s<40; s++) {
+            let star = document.createElement('div');
+            star.className = 'star';
+            star.style.width = Math.random() * 2 + 'px';
+            star.style.height = star.style.width;
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            ui.box.insertBefore(star, ui.binsArea);
+        }
+
+        // Create Bins
+        for(let i=0; i<atomicNumber; i++) {
+            let bin = document.createElement('div');
+            bin.className = 'bin';
+            let label = document.createElement('div');
+            label.className = 'bin-label';
+            label.innerText = (i+1);
+            bin.appendChild(label);
+            ui.binsArea.appendChild(bin);
+        }
+
+        // Create Electrons
+        for(let i=0; i<totalElectrons; i++) {
+            let e = document.createElement('div');
+            e.className = 'electron';
+            // Scatter
+            e.style.left = (Math.random() * 90 + 5) + '%';
+            e.style.top = (Math.random() * 25 + 5) + '%';
+            ui.box.appendChild(e);
+            electronsArr.push(e);
+        }
+    }
+
+    function handleAction() {
+        if(step === 0) runSort();
+        else if(step === 1) runBuild();
+    }
+
+    // --- STEP 1: SORT ---
+    function runSort() {
+        step = 1;
+        ui.actionBtn.disabled = true;
+        ui.status.innerText = "Distributing...";
+
+        // Bin Targets
+        let binRects = [];
+        let boxRect = ui.box.getBoundingClientRect();
+        let binEls = ui.binsArea.children;
+        
+        // FIX: Ensure we have bins to measure
+        if (binEls.length === 0) return;
+
+        for(let i=0; i<binEls.length; i++) {
+            let r = binEls[i].getBoundingClientRect();
+            binRects.push({
+                x: r.left - boxRect.left + r.width/2,
+                y: r.top - boxRect.top + r.height - 20
+            });
+        }
+
+        // Animate
+        let stackHeight = 15;
+        // Adaptive stack height for many electrons
+        if(totalElectrons / atomicNumber > 10) stackHeight = 10;
+
+        electronsArr.forEach((e, i) => {
+            setTimeout(() => {
+                let binIdx = i % atomicNumber;
+                let binObj = bins[binIdx];
+                let pos = binRects[binIdx];
+                
+                let targetY = pos.y - (binObj.length * stackHeight);
+                
+                e.style.left = (pos.x - 6) + 'px'; // Center
+                e.style.top = targetY + 'px';
+                
+                binObj.push(e);
+
+                if(i === totalElectrons - 1) {
+                    setTimeout(calcLogic, 800);
+                }
+            }, i * 20); // Faster deal
+        });
+    }
+
+    function calcLogic() {
+        let heights = bins.map(b => b.length);
+        minHeight = Math.min(...heights);
+        let remainder = totalElectrons - (minHeight * atomicNumber);
+
+        ui.status.innerText = "Distribution Complete";
+        ui.math.innerHTML = `${totalElectrons} &divide; ${atomicNumber} = <span style="color:#00f3ff">${minHeight}</span> (Rem <span style="color:#e74c3c">${remainder}</span>)`;
+        ui.math.style.opacity = 1;
+
+        if(minHeight > 0) {
+            let binEls = ui.binsArea.children;
+            let boxRect = ui.box.getBoundingClientRect();
+            let bRect = binEls[0].getBoundingClientRect();
+            let baseParamsY = bRect.top - boxRect.top + bRect.height - 20;
+            
+            let stackHeight = 15;
+            if(totalElectrons / atomicNumber > 10) stackHeight = 10;
+
+            let lineY = baseParamsY - (minHeight * stackHeight) + (stackHeight/2);
+            
+            ui.cutLine.style.top = lineY + 'px';
+            ui.cutLabel.innerText = "LIMIT: " + minHeight;
+            ui.cutLine.style.opacity = 1;
+        }
+
+        // Highlight Remainder
+        bins.forEach(bin => {
+            bin.forEach((e, idx) => {
+                if(idx >= minHeight) {
+                    e.style.background = "#e74c3c";
+                    e.style.boxShadow = "0 0 8px #e74c3c";
+                    e.style.zIndex = 100;
+                }
+            });
+        });
+
+        ui.actionBtn.innerText = "2. SYNTHESIZE";
+        ui.actionBtn.disabled = false;
+    }
+
+    // --- STEP 2: SYNTHESIZE ---
+    function runBuild() {
+        ui.actionBtn.disabled = true;
+
+        if(finishedAtoms >= minHeight) {
+            ui.status.innerHTML = `Process Ended. Remainder: <span style="color:#e74c3c">${totalElectrons - (minHeight*atomicNumber)}</span>`;
+            ui.actionBtn.style.display = 'none';
+            return;
+        }
+
+        ui.status.innerText = `Synthesizing ${elementData.n} ${finishedAtoms+1}...`;
+        
+        let parts = [];
+        let targetIdx = minHeight - 1 - finishedAtoms;
+        
+        for(let b=0; b<bins.length; b++) {
+            parts.push(bins[b][targetIdx]);
+        }
+
+        // Create Nucleus
+        let nuc = document.createElement('div');
+        nuc.className = "nucleus";
+        nuc.innerText = elementData.s;
+        let asmX = ui.box.offsetWidth / 2;
+        let asmY = 180;
+        
+        nuc.style.left = asmX + 'px';
+        nuc.style.top = asmY + 'px';
+        ui.box.appendChild(nuc);
+        setTimeout(() => nuc.style.opacity = 1, 50);
+
+        // Orbit
+        parts.forEach((e, i) => {
+            let angle = (i * (360/atomicNumber)) - 90;
+            let rad = angle * (Math.PI/180);
+            
+            // ADAPTIVE SCALE LOGIC
+            let dist = 40;
+            let scale = 1;
+            if(atomicNumber > 30) { dist = 50; scale = 0.8; }
+            if(atomicNumber > 60) { dist = 60; scale = 0.6; }
+            if(atomicNumber > 90) { dist = 70; scale = 0.5; }
+            
+            let targetX = Math.cos(rad) * dist;
+            let targetY = Math.sin(rad) * dist;
+            
+            e.style.left = (asmX + targetX - 6) + 'px';
+            e.style.top = (asmY + targetY - 6) + 'px';
+            e.style.transform = `scale(${scale})`; 
+            e.style.zIndex = 20;
+        });
+
+        setTimeout(() => {
+            finishedAtoms++;
+            
+            // Grid layout based on container width
+            let boxW = ui.box.offsetWidth;
+            let spacingX = 180;
+            if(atomicNumber > 30) spacingX = 200;
+            
+            let cols = Math.floor(boxW / spacingX);
+            if(cols < 1) cols = 1;
+            
+            let row = Math.floor((finishedAtoms-1) / cols);
+            let col = (finishedAtoms-1) % cols;
+            
+            let startX = (boxW - (cols*spacingX))/2 + (spacingX/2);
+            
+            let parkX = startX + (col * spacingX);
+            let parkY = 100 + (row * 120);
+
+            nuc.style.left = parkX + 'px';
+            nuc.style.top = parkY + 'px';
+            
+            parts.forEach((e, i) => {
+                let angle = (i * (360/atomicNumber)) - 90;
+                let rad = angle * (Math.PI/180);
+                
+                // Adaptive Scale Logic (applied again for parked state)
+                let dist = 40;
+                let scale = 1;
+                if(atomicNumber > 30) { dist = 50; scale = 0.8; }
+                if(atomicNumber > 60) { dist = 60; scale = 0.6; }
+                if(atomicNumber > 90) { dist = 70; scale = 0.5; }
+
+                e.style.left = (parkX + Math.cos(rad)*dist - 6) + 'px';
+                e.style.top = (parkY + Math.sin(rad)*dist - 6) + 'px';
+                e.style.transform = `scale(${scale})`;
+            });
+            
+            let lbl = document.createElement('div');
+            lbl.className = "atom-label";
+            lbl.innerText = `${finishedAtoms}. ${elementData.n}`;
+            lbl.style.left = parkX + 'px';
+            // FIX: Raised label position to avoid overlap with large electron clouds
+            lbl.style.top = (parkY - 90) + 'px'; 
+            ui.box.appendChild(lbl);
+            setTimeout(() => lbl.style.opacity = 1, 300);
+
+            ui.actionBtn.disabled = false;
+            
+            if(finishedAtoms >= minHeight) {
+                ui.status.innerHTML = `Synthesis Complete.`;
+                ui.actionBtn.style.display = 'none';
+            } else {
+                ui.status.innerText = `${elementData.n} ${finishedAtoms} Stabilized.`;
+            }
+
+        }, 1200);
+    }
+    
+    // Init Preview
+    updatePreview();
+
+</script>
+
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

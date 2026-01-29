@@ -1,0 +1,546 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sum Master</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<style>
+  :root {
+      --bg-color: #0f0f1a;
+      --text-color: #fff;
+      --blue: #3498db; 
+      --red: #e74c3c;
+      --green: #2ecc71;
+      --yellow: #f1c40f;
+      --purple: #9b59b6;
+      --block-size: 24px;
+  }
+
+  body {
+      background: var(--bg-color); color: var(--text-color);
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      display: flex; flex-direction: column; align-items: center; 
+      margin: 0; min-height: 100vh; user-select: none;
+      overflow-x: hidden; overflow-y: hidden;
+  }
+
+  /* --- MENU SCREEN --- */
+  #menu-screen {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100vh; width: 100%; z-index: 100;
+  }
+  .menu-btn {
+      width: 320px; padding: 25px; margin: 10px;
+      font-size: 22px; font-weight: bold; border-radius: 15px;
+      border: none; cursor: pointer; color: #fff;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center;
+  }
+  .menu-btn span { font-size: 14px; font-weight: normal; opacity: 0.8; margin-top: 5px; }
+  .menu-btn:active { transform: scale(0.95); }
+  
+  .btn-lvl1 { background: linear-gradient(135deg, #3498db, #2980b9); box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4); }
+  .btn-lvl2 { background: linear-gradient(135deg, #e67e22, #d35400); box-shadow: 0 5px 15px rgba(230, 126, 34, 0.4); }
+  .btn-lvl3 { background: linear-gradient(135deg, #9b59b6, #8e44ad); box-shadow: 0 5px 15px rgba(155, 89, 182, 0.4); }
+
+  /* --- HEADER --- */
+  #header {
+      width: 100%; padding: 15px; background: #1a1a2e; border-bottom: 2px solid #333;
+      display: flex; justify-content: center; align-items: center; gap: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 50;
+  }
+  .num-input {
+      background: #000; border: 2px solid #555; color: #fff;
+      font-size: 28px; width: 70px; padding: 5px; text-align: center; border-radius: 8px;
+  }
+  
+  .action-btn {
+      border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;
+      color: #fff; transition: transform 0.1s;
+  }
+  .action-btn:active { transform: scale(0.95); }
+  .btn-new { background: var(--blue); }
+  .btn-home { background: #555; margin-right: auto; margin-left: 10px; font-size: 20px;}
+
+  /* --- WORKSPACE --- */
+  #workspace {
+      display: grid; 
+      grid-template-columns: 1fr 300px; 
+      gap: 20px; width: 95%; max-width: 1400px; 
+      flex-grow: 1; padding-top: 40px;
+  }
+  #workspace.no-visuals {
+      display: flex; flex-direction: column; align-items: center;
+      grid-template-columns: none;
+  }
+
+  /* SHARED EQUATION STYLES */
+  .equation-area {
+      display: flex; flex-direction: column; align-items: center; position: relative; z-index: 10;
+      width: 100%;
+  }
+  .equation-chain {
+      display: flex; flex-direction: row; align-items: flex-start; justify-content: center;
+      gap: 20px; width: 100%; flex-wrap: wrap;
+      font-size: 60px; font-weight: bold;
+      min-height: 250px;
+  }
+  .eq-part { display: flex; align-items: center; gap: 10px; opacity: 1; transition: opacity 0.5s; }
+  .hidden { opacity: 0; pointer-events: none; display: none !important; }
+
+  .number-box { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .blue-text { color: var(--blue); }
+  .red-text { color: var(--red); }
+  .green-text { color: var(--green); }
+  .purple-text { color: var(--purple); }
+  .op { color: #666; font-family: monospace; margin-top: -10px; }
+
+  /* STEPS TEXT */
+  .step-text { font-size: 30px; margin-top: 10px; color: #aaa; text-align: center; }
+  .mid-input {
+      min-width: 80px; height: 60px; font-size: 35px; text-align: center;
+      background: #222; border: 2px solid #555; color: white; border-radius: 10px;
+      display: inline-block; margin: 0 10px; padding: 0 10px;
+  }
+
+  /* VISUAL PANEL */
+  .visual-panel {
+      position: relative; border-left: 2px dashed #333;
+      display: flex; flex-direction: column; align-items: center; padding-top: 50px;
+  }
+  .visual-panel.hidden-panel { display: none; }
+  
+  .panel-label {
+      font-size: 14px; text-transform: uppercase; color: #666; letter-spacing: 2px;
+      margin-bottom: 20px;
+  }
+  .block-stage { position: relative; width: 200px; height: 400px; }
+  .block {
+      position: absolute; width: var(--block-size); height: var(--block-size);
+      background-color: var(--blue); border-radius: 2px;
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.4);
+      transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  /* INPUT STATES */
+  .active-input {
+      border-color: var(--yellow); box-shadow: 0 0 20px rgba(241, 196, 15, 0.4);
+      background: #333; transform: scale(1.1); color: #fff !important;
+  }
+  .correct-input { 
+      border-color: var(--green); color: var(--green) !important; 
+      background: #1a1a1a; box-shadow: 0 0 15px rgba(46, 204, 113, 0.3);
+  }
+  .wrong-input { 
+      border-color: var(--red); color: var(--red) !important; animation: shake 0.3s; 
+  }
+
+  .final-box {
+      width: 110px; height: 80px; border: 3px solid #444; background: #111;
+      color: #fff; font-size: 45px; display: flex; align-items: center; justify-content: center;
+      border-radius: 12px; cursor: pointer; margin-top: -10px;
+  }
+
+  @keyframes shake {
+      0% { transform: translateX(0); } 25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); } 75% { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
+  }
+
+  #hintBar {
+      font-size: 24px; color: #888; margin-bottom: 20px; text-align: center; height: 40px; line-height: 40px; width: 100%;
+  }
+  #keypad {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+      width: 400px; padding-bottom: 30px; margin-top: auto;
+  }
+  .key {
+      background: #1f1f1f; border: 1px solid #333; color: #fff;
+      font-size: 24px; padding: 15px 0; border-radius: 8px; cursor: pointer;
+  }
+  .key:active { background: #333; transform: translateY(2px); }
+  .key-action { background: #2c2c2c; font-weight: bold; }
+
+  .balloon {
+      position: absolute; bottom: -100px; width: 40px; height: 50px;
+      border-radius: 50%; opacity: 0.9; animation: floatUp 4s ease-in infinite; z-index: 5;
+  }
+  @keyframes floatUp {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(-120vh) rotate(20deg); opacity: 0; }
+  }
+</style>
+
+  <meta name="theme-color" content="#0a1220">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
+  <link rel="icon" href="../assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/arcade.css">
+
+</head>
+<body class="arcade arcade-game arcade-standard" data-arcade-page="game">
+
+<div id="celebration-area" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1;"></div>
+
+<div id="menu-screen">
+    <h1 style="color:white; font-size: 40px; margin-bottom: 30px;">Sum Master</h1>
+    <button class="menu-btn btn-lvl1" onclick="startLevel(1)">
+        Level 1
+        <span>Single Digits (Add up to 20)</span>
+    </button>
+    <button class="menu-btn btn-lvl2" onclick="startLevel(2)">
+        Level 2
+        <span>Two Digits (Tens First)</span>
+    </button>
+    <button class="menu-btn btn-lvl3" onclick="startLevel(3)">
+        Level 3
+        <span>Three Digits (Hundreds First)</span>
+    </button>
+</div>
+
+<div id="game-ui" style="display:none; width: 100%; flex-direction: column; align-items: center; min-height: 100vh;">
+    
+    <div id="header">
+        <button class="action-btn btn-home" onclick="goHome()">🏠</button>
+        <button class="action-btn btn-new" onclick="generateNewProblem()">New Problem</button>
+        
+        <div style="flex-grow:1; display: flex; justify-content: center; align-items: center; gap: 10px;">
+            <div style="font-size: 20px; color: #aaa;">Manual:</div>
+            <input type="number" id="in1" class="num-input" value="145" oninput="initDrill()">
+            <span style="font-size: 24px">+</span>
+            <input type="number" id="in2" class="num-input" value="232" oninput="initDrill()">
+        </div>
+        <div style="width: 50px;"></div>
+    </div>
+
+    <div id="workspace">
+        <div class="equation-area">
+            <div id="hintBar">Ready?</div>
+
+            <div id="level1-container" style="display:none; width: 100%; flex-direction: column; align-items: center;">
+                <div class="equation-chain">
+                    <div class="eq-part">
+                        <div class="number-box blue-text" id="l1-n1">12</div>
+                        <div class="op">+</div>
+                        <div class="number-box red-text" id="l1-n2">5</div>
+                        <div class="op">=</div>
+                        <div class="final-box" id="l1-finalAns" onclick="setFocus('l1-finalAns')">?</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="level2-container" style="display:none; width: 100%; flex-direction: column; align-items: center;">
+                <div class="equation-chain">
+                    <div class="eq-part">
+                        <div class="number-box blue-text" id="l2-n1">46</div>
+                        <div class="op">+</div>
+                        <div class="number-box red-text" id="l2-n2">22</div>
+                    </div>
+                    
+                    <div class="eq-part" id="l2-step1">
+                        <div class="step-text">
+                            First: <span id="l2-txt-base" class="blue-text">46</span> + <span id="l2-txt-tens" class="red-text">20</span> = 
+                            <div class="mid-input" id="l2-mid-ans" onclick="setFocus('l2-mid-ans')">?</div>
+                        </div>
+                    </div>
+
+                    <div class="eq-part hidden" id="l2-step2">
+                        <div class="step-text">
+                            Now: <span id="l2-txt-mid" class="green-text">66</span> + <span id="l2-txt-ones" class="red-text">2</span> = 
+                            <div class="final-box" style="display:inline-flex; width: 80px; height: 60px; font-size:35px;" id="l2-final-ans" onclick="setFocus('l2-final-ans')">?</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="level3-container" style="display:none; width: 100%; flex-direction: column; align-items: center;">
+                <div class="equation-chain">
+                    <div class="eq-part">
+                        <div class="number-box blue-text" id="l3-n1">345</div>
+                        <div class="op">+</div>
+                        <div class="number-box red-text" id="l3-n2">123</div>
+                    </div>
+                    
+                    <div class="eq-part" id="l3-step1">
+                        <div class="step-text">
+                            First: <span id="l3-txt-base" class="blue-text">345</span> + <span id="l3-txt-hund" class="red-text">100</span> = 
+                            <div class="mid-input" id="l3-mid1" onclick="setFocus('l3-mid1')">?</div>
+                        </div>
+                    </div>
+
+                    <div class="eq-part hidden" id="l3-step2">
+                        <div class="step-text">
+                            Then: <span id="l3-txt-mid1" class="purple-text">445</span> + <span id="l3-txt-tens" class="red-text">20</span> = 
+                            <div class="mid-input" id="l3-mid2" onclick="setFocus('l3-mid2')">?</div>
+                        </div>
+                    </div>
+
+                    <div class="eq-part hidden" id="l3-step3">
+                        <div class="step-text">
+                            Finally: <span id="l3-txt-mid2" class="green-text">465</span> + <span id="l3-txt-ones" class="red-text">3</span> = 
+                            <div class="final-box" style="display:inline-flex; width: 80px; height: 60px; font-size:35px;" id="l3-final" onclick="setFocus('l3-final')">?</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="keypad">
+                <button class="key" onclick="press(1)">1</button>
+                <button class="key" onclick="press(2)">2</button>
+                <button class="key" onclick="press(3)">3</button>
+                <button class="key" onclick="press(4)">4</button>
+                <button class="key" onclick="press(5)">5</button>
+                <button class="key" onclick="press(6)">6</button>
+                <button class="key" onclick="press(7)">7</button>
+                <button class="key" onclick="press(8)">8</button>
+                <button class="key" onclick="press(9)">9</button>
+                <button class="key" onclick="press(0)">0</button>
+                <button class="key key-action" onclick="press('back')">⌫</button>
+                <button class="key key-action" onclick="press('tab')">TAB</button>
+            </div>
+        </div>
+
+        <div class="visual-panel" id="visual-panel">
+            <div class="panel-label">Visual Aid</div>
+            <div class="block-stage" id="blockStage"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentLevel = 0;
+    let state = { n1: 0, n2: 0, focus: '', step: 0, inputs: {} };
+
+    function goHome() {
+        document.getElementById('menu-screen').style.display = 'flex';
+        document.getElementById('game-ui').style.display = 'none';
+    }
+
+    function startLevel(lvl) {
+        currentLevel = lvl;
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'flex';
+        
+        document.getElementById('level1-container').style.display = (lvl === 1) ? 'flex' : 'none';
+        document.getElementById('level2-container').style.display = (lvl === 2) ? 'flex' : 'none';
+        document.getElementById('level3-container').style.display = (lvl === 3) ? 'flex' : 'none';
+        
+        let ws = document.getElementById('workspace');
+        let vp = document.getElementById('visual-panel');
+        if (lvl === 1) { ws.className = ''; vp.className = 'visual-panel'; }
+        else { ws.className = 'no-visuals'; vp.className = 'visual-panel hidden-panel'; }
+        
+        generateNewProblem();
+    }
+
+    function generateNewProblem() {
+        let n1, n2;
+        if (currentLevel === 1) {
+            n1 = Math.floor(Math.random() * 9) + 2;
+            n2 = Math.floor(Math.random() * 9) + 2;
+        } else if (currentLevel === 2) {
+            n1 = Math.floor(Math.random() * 50) + 10;
+            n2 = Math.floor(Math.random() * 40) + 10;
+        } else {
+            n1 = Math.floor(Math.random() * 400) + 100;
+            n2 = Math.floor(Math.random() * 400) + 100;
+        }
+        document.getElementById('in1').value = n1;
+        document.getElementById('in2').value = n2;
+        initDrill();
+    }
+
+    function initDrill() {
+        let n1 = parseInt(document.getElementById('in1').value);
+        let n2 = parseInt(document.getElementById('in2').value);
+        if (isNaN(n1) || isNaN(n2)) return;
+
+        state.n1 = n1; state.n2 = n2; state.inputs = {}; 
+        document.getElementById('celebration-area').innerHTML = '';
+        document.getElementById('blockStage').innerHTML = '';
+
+        if (currentLevel === 1) initLevel1(n1, n2);
+        else if (currentLevel === 2) initLevel2(n1, n2);
+        else initLevel3(n1, n2);
+    }
+
+    function initLevel1(n1, n2) {
+        document.getElementById('l1-n1').innerText = n1;
+        document.getElementById('l1-n2').innerText = n2;
+        state.inputs = { final: '' }; state.step = 1;
+        resetClass('l1-finalAns');
+        state.focus = 'l1-finalAns';
+        document.getElementById('hintBar').innerText = `Add them up!`;
+        spawnBlocks(n1, 'blockStage');
+        updateDisplay();
+    }
+
+    function initLevel2(n1, n2) {
+        document.getElementById('l2-n1').innerText = n1;
+        document.getElementById('l2-n2').innerText = n2;
+        state.inputs = { mid: '', final: '' }; state.step = 1;
+        document.getElementById('l2-step1').className = 'eq-part';
+        document.getElementById('l2-step1').style.display = 'flex';
+        document.getElementById('l2-step2').className = 'eq-part hidden';
+        resetClass('l2-mid-ans'); resetClass('l2-final-ans');
+        let n2Tens = Math.floor(n2 / 10) * 10;
+        document.getElementById('l2-txt-base').innerText = n1;
+        document.getElementById('l2-txt-tens').innerText = n2Tens;
+        state.focus = 'l2-mid-ans';
+        document.getElementById('hintBar').innerText = `First, add the Tens (${n2Tens})`;
+        updateDisplay();
+    }
+
+    function initLevel3(n1, n2) {
+        document.getElementById('l3-n1').innerText = n1;
+        document.getElementById('l3-n2').innerText = n2;
+        state.inputs = { mid1: '', mid2: '', final: '' }; state.step = 1;
+        document.getElementById('l3-step1').className = 'eq-part';
+        document.getElementById('l3-step1').style.display = 'flex';
+        document.getElementById('l3-step2').className = 'eq-part hidden';
+        document.getElementById('l3-step3').className = 'eq-part hidden';
+        resetClass('l3-mid1'); resetClass('l3-mid2'); resetClass('l3-final');
+        let n2Hund = Math.floor(n2 / 100) * 100;
+        document.getElementById('l3-txt-base').innerText = n1;
+        document.getElementById('l3-txt-hund').innerText = n2Hund;
+        state.focus = 'l3-mid1';
+        document.getElementById('hintBar').innerText = `First, add the Hundreds (${n2Hund})`;
+        updateDisplay();
+    }
+
+    function setFocus(id) {
+        state.focus = id;
+        updateDisplay();
+    }
+
+    function press(key) {
+        if (key === 'tab') return;
+        let valKey = (state.focus.includes('final') || state.focus === 'l1-finalAns') ? 'final' : (state.focus.includes('mid1') ? 'mid1' : (state.focus.includes('mid2') ? 'mid2' : 'mid'));
+        if (key === 'back') state.inputs[valKey] = state.inputs[valKey].slice(0, -1);
+        else if (state.inputs[valKey].length < 4) state.inputs[valKey] += key.toString();
+        updateDisplay();
+        checkLogic();
+    }
+
+    function updateDisplay() {
+        if(currentLevel === 1) safeSetText('l1-finalAns', state.inputs.final);
+        else if(currentLevel === 2) { safeSetText('l2-mid-ans', state.inputs.mid); safeSetText('l2-final-ans', state.inputs.final); }
+        else { safeSetText('l3-mid1', state.inputs.mid1); safeSetText('l3-mid2', state.inputs.mid2); safeSetText('l3-final', state.inputs.final); }
+        highlightFocus();
+    }
+
+    function safeSetText(id, val) { let el = document.getElementById(id); if(el) el.innerText = val === '' ? '?' : val; }
+
+    function highlightFocus() {
+        document.querySelectorAll('.final-box, .mid-input').forEach(el => el.classList.remove('active-input'));
+        let el = document.getElementById(state.focus);
+        if(el) el.classList.add('active-input');
+    }
+
+    function resetClass(id) {
+        let el = document.getElementById(id);
+        if(el) { el.classList.remove('correct-input', 'wrong-input', 'active-input'); el.style.color = ''; }
+    }
+
+    function checkLogic() {
+        let h = document.getElementById('hintBar');
+        if (currentLevel === 1) {
+            let correct = state.n1 + state.n2;
+            if (parseInt(state.inputs.final) === correct) {
+                document.getElementById('l1-finalAns').classList.add('correct-input');
+                h.innerHTML = "<span style='color:var(--green)'>CORRECT!</span>";
+                spawnBlocksExtra(state.n2, 'blockStage');
+                triggerCelebration();
+            }
+        } else if (currentLevel === 2) {
+            let n2Tens = Math.floor(state.n2 / 10) * 10;
+            let correctMid = state.n1 + n2Tens;
+            if (state.step === 1 && parseInt(state.inputs.mid) === correctMid) {
+                document.getElementById('l2-mid-ans').classList.add('correct-input');
+                document.getElementById('l2-step2').style.display = 'flex';
+                setTimeout(() => document.getElementById('l2-step2').className = 'eq-part', 50);
+                document.getElementById('l2-txt-mid').innerText = correctMid;
+                document.getElementById('l2-txt-ones').innerText = state.n2 % 10;
+                state.step = 2; state.focus = 'l2-final-ans'; updateDisplay();
+            } else if (state.step === 2 && parseInt(state.inputs.final) === (state.n1 + state.n2)) {
+                document.getElementById('l2-final-ans').classList.add('correct-input');
+                h.innerHTML = "<span style='color:var(--green)'>CORRECT!</span>";
+                triggerCelebration();
+            }
+        } else if (currentLevel === 3) {
+            let n2H = Math.floor(state.n2 / 100) * 100;
+            let n2T = Math.floor((state.n2 % 100) / 10) * 10;
+            if (state.step === 1 && parseInt(state.inputs.mid1) === (state.n1 + n2H)) {
+                document.getElementById('l3-mid1').classList.add('correct-input');
+                document.getElementById('l3-step2').style.display = 'flex';
+                setTimeout(() => document.getElementById('l3-step2').className = 'eq-part', 50);
+                document.getElementById('l3-txt-mid1').innerText = state.n1 + n2H;
+                document.getElementById('l3-txt-tens').innerText = n2T;
+                state.step = 2; state.focus = 'l3-mid2'; updateDisplay();
+            } else if (state.step === 2 && parseInt(state.inputs.mid2) === (state.n1 + n2H + n2T)) {
+                document.getElementById('l3-mid2').classList.add('correct-input');
+                document.getElementById('l3-step3').style.display = 'flex';
+                setTimeout(() => document.getElementById('l3-step3').className = 'eq-part', 50);
+                document.getElementById('l3-txt-mid2').innerText = state.n1 + n2H + n2T;
+                document.getElementById('l3-txt-ones').innerText = state.n2 % 10;
+                state.step = 3; state.focus = 'l3-final'; updateDisplay();
+            } else if (state.step === 3 && parseInt(state.inputs.final) === (state.n1 + state.n2)) {
+                document.getElementById('l3-final').classList.add('correct-input');
+                h.innerHTML = "<span style='color:var(--green)'>CORRECT!</span>";
+                triggerCelebration();
+            }
+        }
+    }
+
+    function spawnBlocks(count, targetId) {
+        const stage = document.getElementById(targetId);
+        for(let i=0; i<count; i++) {
+            let b = document.createElement('div');
+            b.className = 'block';
+            b.style.left = (80 + (i%2) * 28) + 'px';
+            b.style.top = (20 + Math.floor(i/2) * 28) + 'px';
+            stage.appendChild(b);
+        }
+    }
+
+    function spawnBlocksExtra(count, targetId) {
+        const stage = document.getElementById(targetId);
+        let existing = stage.querySelectorAll('.block').length;
+        for(let i=0; i<count; i++) {
+            let b = document.createElement('div');
+            b.className = 'block';
+            b.style.backgroundColor = 'var(--red)';
+            b.style.left = (150 + (i%2) * 28) + 'px';
+            b.style.top = (250 + Math.floor(i/2) * 28) + 'px';
+            stage.appendChild(b);
+        }
+    }
+
+    function triggerCelebration() {
+        const area = document.getElementById('celebration-area');
+        const colors = ['var(--red)', 'var(--blue)', 'var(--green)', 'var(--yellow)', 'var(--purple)'];
+        for(let i=0; i<15; i++) {
+            let b = document.createElement('div');
+            b.className = 'balloon';
+            b.style.left = Math.random() * 90 + '%';
+            b.style.background = colors[Math.floor(Math.random() * colors.length)];
+            b.style.animationDuration = (3 + Math.random() * 2) + 's'; 
+            area.appendChild(b);
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if(e.key >= '0' && e.key <= '9') press(parseInt(e.key));
+        if(e.key === 'Backspace') press('back');
+    });
+</script>
+
+<script src="../assets/js/app.js"></script>
+</body>
+</html>
+    

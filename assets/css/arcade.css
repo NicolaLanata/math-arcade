@@ -1,0 +1,316 @@
+/* Math Arcade - shared styles (no external libs) */
+
+:root {
+  --arcade-bg: #0a1220;
+  --arcade-panel: rgba(255, 255, 255, 0.06);
+  --arcade-panel-2: rgba(255, 255, 255, 0.10);
+  --arcade-text: #eaf2ff;
+  --arcade-muted: rgba(234, 242, 255, 0.72);
+  --arcade-accent: #00f3ff;
+
+  --arcade-radius: 16px;
+  --arcade-gap: 14px;
+
+  --arcade-header-bar: 56px;
+  --arcade-header-height: calc(var(--arcade-header-bar) + env(safe-area-inset-top));
+  --arcade-safe-bottom: env(safe-area-inset-bottom);
+
+  --arcade-tile-min: 150px;
+  --arcade-hit: 52px;
+}
+
+html, body {
+  height: 100%;
+}
+
+body.arcade {
+  margin: 0;
+  background: var(--arcade-bg);
+  color: var(--arcade-text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Prevent iOS double-tap zoom issues on controls */
+button, a {
+  touch-action: manipulation;
+}
+
+/* Header */
+.arcade-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  height: var(--arcade-header-height);
+  padding-top: env(safe-area-inset-top);
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding-left: 14px;
+  padding-right: 14px;
+
+  background: rgba(10, 18, 32, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.arcade-header .arcade-title {
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  font-size: 18px;
+  white-space: nowrap;
+}
+
+.arcade-header .arcade-spacer {
+  flex: 1;
+}
+
+.arcade-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--arcade-hit);
+  padding: 0 14px;
+
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--arcade-text);
+
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.arcade-back:active {
+  transform: translateY(1px);
+}
+
+.arcade-header .arcade-small {
+  color: var(--arcade-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Make header not consume layout space on canvas games (avoids shrinking/clipping canvas) */
+body.arcade-game .arcade-header {
+  position: fixed;
+  left: 0;
+  right: 0;
+}
+
+/* Pages */
+/* Standard (non-canvas) game pages: header is fixed, so reserve space for it */
+body.arcade-standard {
+  padding-top: var(--arcade-header-height);
+  padding-bottom: var(--arcade-safe-bottom);
+  box-sizing: border-box;
+}
+
+
+.arcade-page {
+  padding: 16px;
+  padding-bottom: calc(16px + var(--arcade-safe-bottom));
+  box-sizing: border-box;
+}
+
+body.arcade-home .arcade-page,
+body.arcade-settings .arcade-page {
+  padding-top: 10px;
+}
+
+/* Home tiles */
+.arcade-sect {
+  margin: 18px 0 22px 0;
+}
+
+.arcade-sect h2 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  letter-spacing: 0.2px;
+}
+
+.arcade-grid {
+  display: grid;
+  gap: var(--arcade-gap);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (orientation: landscape) and (min-width: 768px) {
+  .arcade-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (orientation: portrait) and (min-width: 768px) {
+  .arcade-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.arcade-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  padding: 14px;
+  min-height: var(--arcade-tile-min);
+
+  border-radius: var(--arcade-radius);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--arcade-panel);
+  text-decoration: none;
+  color: var(--arcade-text);
+}
+
+.arcade-tile:active {
+  transform: translateY(1px);
+}
+
+.arcade-tile .tile-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: rgba(0, 243, 255, 0.14);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 28px;
+}
+
+.arcade-tile[data-kind="game"] .tile-icon {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.arcade-tile .tile-name {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.arcade-tile .tile-desc {
+  font-size: 13px;
+  color: var(--arcade-muted);
+  line-height: 1.25;
+}
+
+.arcade-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* Buttons on pages */
+.arcade-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--arcade-hit);
+  padding: 0 16px;
+
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--arcade-text);
+  font-size: 16px;
+  font-weight: 700;
+
+  text-decoration: none;
+}
+
+.arcade-btn.primary {
+  border-color: rgba(0, 243, 255, 0.45);
+  background: rgba(0, 243, 255, 0.14);
+}
+
+/* Settings gate */
+.gate {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 16px;
+  border-radius: var(--arcade-radius);
+  border: 1px solid rgba(255,255,255,0.12);
+  background: var(--arcade-panel);
+}
+
+.gate label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.gate input {
+  width: 100%;
+  height: 52px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.20);
+  background: rgba(0,0,0,0.25);
+  color: var(--arcade-text);
+  font-size: 18px;
+  box-sizing: border-box;
+}
+
+.gate .row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.note {
+  color: var(--arcade-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+/* ---------- Canvas-game safe-area fixes (no playfield shrink) ---------- */
+
+/* Offset top HUD below the Arcade header (header is fixed on canvas pages) */
+body.arcade-canvas #hud {
+  top: var(--arcade-header-height) !important;
+}
+
+/* Defense games: progress panel sits below HUD; keep its relative spacing */
+body.arcade-canvas #progressPanel {
+  top: calc(90px + var(--arcade-header-height)) !important;
+}
+
+/* Fullscreen overlays inside canvas games: keep content visible below header & above home indicator */
+body.arcade-canvas #menuScreen,
+body.arcade-canvas #gameOverScreen,
+body.arcade-canvas #levelCompleteScreen,
+body.arcade-canvas #startScreen {
+  padding-top: calc(20px + var(--arcade-header-height)) !important;
+  padding-bottom: calc(20px + var(--arcade-safe-bottom)) !important;
+  box-sizing: border-box !important;
+}
+
+/* Bottom bars: keep the *top edge* where the game expects it, but lift content above the home indicator */
+body.arcade-canvas #keypad {
+  height: calc(300px + var(--arcade-safe-bottom)) !important;
+  padding-bottom: var(--arcade-safe-bottom) !important;
+  bottom: calc(-1 * var(--arcade-safe-bottom)) !important;
+  box-sizing: border-box !important;
+}
+
+body.arcade-canvas #controls {
+  height: calc(140px + var(--arcade-safe-bottom)) !important;
+  padding-bottom: var(--arcade-safe-bottom) !important;
+  bottom: calc(-1 * var(--arcade-safe-bottom)) !important;
+  box-sizing: border-box !important;
+}
+
+/* Keep the Arcade header tappable above game overlays */
+body.arcade-game .arcade-header {
+  z-index: 9999;
+}

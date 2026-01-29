@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Subtraction Mission</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <link rel="stylesheet" href="../assets/css/arcade.css">
+  <link rel="stylesheet" href="../assets/css/mission.css">
+</head>
+<body class="arcade arcade-game arcade-standard arcade-mission" data-arcade-page="game">
+  <main class="arcade-page" aria-label="Subtraction Mission">
+    <div class="mission-wrap">
+
+      <section id="screenLevel" class="mission-card" aria-label="Choose level">
+        <h1 class="mission-title" id="missionTitle">Subtraction Mission</h1>
+        <p class="mission-subtitle">5 problems. More correct is always better. If tied, faster time wins.</p>
+
+        <div class="mission-row">
+          <label class="mission-label" for="playerName">Name</label>
+          <input id="playerName" class="mission-input" inputmode="text" autocomplete="off" placeholder="Player">
+        </div>
+
+        <div id="levelButtons" class="mission-levels" role="group" aria-label="Levels">
+          <button class="mission-level-btn" type="button" data-level="1">
+            <div class="mission-level-top">
+              <div class="mission-level-name">Level 1</div>
+              <div class="mission-level-best" id="bestL1">Best: —</div>
+            </div>
+            <div class="mission-level-desc">Same Level 1 as Subtraction Master.</div>
+          </button>
+
+          <button class="mission-level-btn" type="button" data-level="2">
+            <div class="mission-level-top">
+              <div class="mission-level-name">Level 2</div>
+              <div class="mission-level-best" id="bestL2">Best: —</div>
+            </div>
+            <div class="mission-level-desc">Same Level 2 as Subtraction Master.</div>
+          </button>
+
+          <button class="mission-level-btn" type="button" data-level="3">
+            <div class="mission-level-top">
+              <div class="mission-level-name">Level 3</div>
+              <div class="mission-level-best" id="bestL3">Best: —</div>
+            </div>
+            <div class="mission-level-desc">Same Level 3 as Subtraction Master.</div>
+          </button>
+        </div>
+
+        <p class="mission-note">Timer starts on your first input (keypad or keyboard). Press Enter or OK to submit.</p>
+      </section>
+
+      <section id="screenRun" class="mission-card" style="display:none" aria-label="Mission">
+        <div class="mission-topbar">
+          <div class="mission-tag" id="levelTag">Level 1</div>
+          <div class="mission-timer" id="timerText">0.0s</div>
+        </div>
+
+        <div class="mission-progress">
+          <div class="mission-counter" id="counterText">Problem 1/5</div>
+          <div class="mission-markers" id="markers" aria-label="Progress"></div>
+        </div>
+
+        <div class="mission-equation" id="equationText">?</div>
+
+        <div class="mission-answer-row" aria-label="Answer">
+          <div class="mission-answer" id="answerText">—</div>
+          <div class="mission-feedback" id="feedbackText" aria-live="polite"></div>
+        </div>
+
+        <div id="missionKeypad" class="mission-keypad" aria-label="Keypad">
+          <button class="mission-key" type="button" data-key="7">7</button>
+          <button class="mission-key" type="button" data-key="8">8</button>
+          <button class="mission-key" type="button" data-key="9">9</button>
+
+          <button class="mission-key" type="button" data-key="4">4</button>
+          <button class="mission-key" type="button" data-key="5">5</button>
+          <button class="mission-key" type="button" data-key="6">6</button>
+
+          <button class="mission-key" type="button" data-key="1">1</button>
+          <button class="mission-key" type="button" data-key="2">2</button>
+          <button class="mission-key" type="button" data-key="3">3</button>
+
+          <button class="mission-key mission-key-action" type="button" data-key="back">⌫</button>
+          <button class="mission-key" type="button" data-key="0">0</button>
+          <button class="mission-key mission-key-ok" type="button" data-key="ok">OK</button>
+        </div>
+
+        <p class="mission-note">Final answer only (no hints, no intermediate steps).</p>
+      </section>
+
+      <section id="screenEnd" class="mission-card" style="display:none" aria-label="Mission complete">
+        <h2 class="mission-title">Mission complete</h2>
+        <div class="mission-end" id="endSummary">—</div>
+        <div class="mission-best" id="endBest">—</div>
+        <div class="mission-actions">
+          <button class="arcade-btn primary" id="btnAgain" type="button">Play again</button>
+          <button class="arcade-btn" id="btnLevels" type="button">Choose level</button>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/mission_core.js"></script>
+  <script>
+    // Generator rules copied from games/subtraction_master.html -> generateNewProblem()
+    function generateProblem(level) {
+      let m, s;
+      if (level === 1) {
+        // Level 1: Bridging (20-99)
+        m = Math.floor(Math.random() * 80) + 20;
+        let u = m % 10;
+        if (u >= 9) { m--; u = m % 10; }
+        let minS = u + 1;
+        let maxS = 9;
+        s = Math.floor(Math.random() * (maxS - minS + 1)) + minS;
+      } else if (level === 2) {
+        // Level 2: Two Digits
+        s = Math.floor(Math.random() * 30) + 11;
+        m = s + Math.floor(Math.random() * 40) + 5;
+      } else {
+        // Level 3: Three Digits (100-999)
+        s = Math.floor(Math.random() * 300) + 111; // 111 to 411
+        m = s + Math.floor(Math.random() * 300) + 50;
+      }
+      return { text: `${m} − ${s} = ?`, answer: m - s };
+    }
+
+    MissionCore.init({
+      title: "Subtraction Mission",
+      storagePrefix: "mathArcade_subMission",
+      generateProblem: generateProblem
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Visual Sum V17</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<style>
+  :root {
+      --base-size: 16px; 
+      --c1: #3498db;
+      --c2: #e67e22;
+      --c-unified: #27ae60;
+      --c-carry: #f1c40f;
+  }
+
+  body {
+      background: #0f0f1a; color: #fff; font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      margin: 0; min-height: 100vh; padding: 10px; user-select: none; overflow-x: hidden;
+  }
+
+  /* MASTER EQUATION BOX */
+  #equation-box {
+      background: #1a1a2e; border: 2px solid #00f3ff; border-radius: 12px;
+      padding: 15px 30px; margin: 10px 0;
+      font-family: 'Courier New', monospace; font-size: 28px; font-weight: bold;
+      color: #fff; text-shadow: 0 0 10px rgba(0, 243, 255, 0.4);
+      min-width: 300px; text-align: center;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  }
+
+  /* CONTROLS */
+  .controls {
+      display: flex; gap: 10px; align-items: center; background: #222; padding: 10px; border-radius: 12px; margin-bottom: 20px;
+      border: 1px solid #444; z-index: 100;
+  }
+  input {
+      background: #000; border: 2px solid #555; color: #fff; font-size: 20px; width: 60px; text-align: center; padding: 5px; border-radius: 6px;
+  }
+  .plus { font-size: 24px; font-weight: bold; color: #aaa; }
+  
+  .btn-group { display: flex; gap: 10px; }
+
+  button {
+      padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer;
+      border: none; border-radius: 8px; transition: all 0.2s; min-width: 140px;
+  }
+  
+  #nextBtn { background: #00f3ff; color: #000; box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); }
+  #nextBtn:hover { transform: scale(1.05); background: #fff; }
+  #nextBtn:disabled { background: #333; color: #555; box-shadow: none; cursor: default; transform: none; }
+
+  #backBtn { background: #444; color: #fff; }
+  #backBtn:hover { background: #666; }
+  #backBtn:disabled { opacity: 0.3; cursor: default; }
+
+  .status { font-size: 18px; height: 24px; color: #aaa; margin-bottom: 5px; font-weight: 500;}
+
+  /* --- MAIN LAYOUT --- */
+  .stage-container {
+      display: flex; justify-content: center; align-items: flex-end; gap: 20px;
+      width: 100%; max-width: 1200px; height: 500px;
+      position: relative; margin-top: 20px;
+  }
+
+  /* STAGING AREAS */
+  .staging-area {
+      width: 160px; height: 100%;
+      border: 2px dashed #333; border-radius: 10px;
+      background: rgba(255,255,255,0.01);
+      position: relative;
+  }
+  .staging-label {
+      position: absolute; bottom: -30px; width: 100%; text-align: center; color: #666; font-weight: bold; font-size: 14px;
+  }
+  
+  /* CENTRAL BOARD */
+  .board {
+      display: flex; gap: 15px; padding: 15px; background: #050508; 
+      border: 2px solid #333; border-radius: 15px;
+      position: relative; height: 100%; align-items: flex-end;
+      box-sizing: border-box;
+      padding-top: 60px; 
+  }
+
+  .column {
+      width: calc(var(--base-size) * 13); 
+      height: 100%;
+      background: #0a0a10; border-radius: 8px; border: 1px solid #222;
+      position: relative;
+  }
+  
+  .col-header {
+      position: absolute; bottom: -30px; width: 100%; text-align: center;
+      font-size: 12px; font-weight: bold; color: #666; text-transform: uppercase;
+  }
+
+  /* MATH LABELS */
+  .math-overlay {
+      position: absolute; top: 15px; width: 150%; left: -25%; 
+      text-align: center; font-family: 'Courier New', monospace;
+      font-size: 20px; font-weight: bold; color: #00f3ff;
+      text-shadow: 0 0 10px rgba(0,243,255,0.3);
+      transition: all 0.3s; z-index: 50;
+      white-space: nowrap;
+  }
+  
+  /* --- BLOCKS --- */
+  .block {
+      position: absolute; border-radius: 2px;
+      transition: all 1.5s cubic-bezier(0.25, 1, 0.5, 1);
+      box-shadow: inset 0 0 2px rgba(0,0,0,0.8);
+      border: 1px solid rgba(255,255,255,0.3);
+      z-index: 10; box-sizing: border-box;
+  }
+
+  /* SIZES */
+  .unit { width: var(--base-size); height: var(--base-size); }
+  .ten { width: var(--base-size); height: calc(var(--base-size) * 10); display: flex; flex-direction: column; } 
+  .hundred { width: calc(var(--base-size) * 10); height: calc(var(--base-size) * 10); }
+
+  /* Markings */
+  .ten::after {
+      content: ''; position: absolute; top:0; left:0; width:100%; height:100%;
+      background: repeating-linear-gradient(to bottom, transparent 0%, transparent calc(10% - 1px), rgba(255,255,255,0.3) calc(10% - 1px), rgba(255,255,255,0.3) 10%);
+  }
+  .hundred::after {
+      content: ''; position: absolute; top:0; left:0; width:100%; height:100%;
+      background: 
+          repeating-linear-gradient(to bottom, transparent 0%, transparent calc(10% - 1px), rgba(255,255,255,0.3) calc(10% - 1px), rgba(255,255,255,0.3) 10%),
+          repeating-linear-gradient(to right, transparent 0%, transparent calc(10% - 1px), rgba(255,255,255,0.3) calc(10% - 1px), rgba(255,255,255,0.3) 10%);
+  }
+
+  /* COLORS */
+  .c1 { background: var(--c1); } 
+  .c2 { background: var(--c2); } 
+  
+  .unified { background: var(--c-unified) !important; border-color: #5ecc71 !important; } 
+  
+  .final-carry { 
+      box-shadow: 0 0 10px var(--c-unified); 
+      border-color: #fff !important;
+  } 
+  
+  .group-highlight { border: 2px solid #fff !important; z-index: 50; }
+
+</style>
+
+  <meta name="theme-color" content="#0a1220">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
+  <link rel="icon" href="../assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/arcade.css">
+
+</head>
+<body class="arcade arcade-game arcade-standard" data-arcade-page="game">
+
+<div id="equation-box">Visual Sum</div>
+
+<div class="controls">
+    <input type="number" id="inp1" value="17" min="0" max="99">
+    <div class="plus">+</div>
+    <input type="number" id="inp2" value="15" min="0" max="99">
+</div>
+
+<div class="btn-group">
+    <button id="backBtn" onclick="prevStep()" disabled>&#8592; BACK</button>
+    <button id="nextBtn" onclick="nextStep()">1. SPAWN</button>
+</div>
+<div class="status" id="statusMsg">Enter numbers to start</div>
+
+<div class="stage-container">
+    <div class="staging-area" id="stage-left">
+        <div class="math-overlay" id="math-left"></div>
+        <div class="staging-label">Number A</div>
+    </div>
+
+    <div class="board" id="main-board">
+        <div class="column" id="col-100">
+            <div class="math-overlay" id="math-col-100"></div>
+            <div class="col-header">Hundreds</div>
+        </div>
+        <div class="column" id="col-10">
+            <div class="math-overlay" id="math-col-10"></div>
+            <div class="col-header">Tens</div>
+        </div>
+        <div class="column" id="col-1">
+            <div class="math-overlay" id="math-col-1"></div>
+            <div class="col-header">Units</div>
+        </div>
+    </div>
+
+    <div class="staging-area" id="stage-right">
+        <div class="math-overlay" id="math-right"></div>
+        <div class="staging-label">Number B</div>
+    </div>
+</div>
+
+<script>
+    const rootStyles = getComputedStyle(document.documentElement);
+    const BASE_SIZE = parseInt(rootStyles.getPropertyValue('--base-size').trim());
+    
+    const UNIT_W = BASE_SIZE;
+    const UNIT_H = BASE_SIZE;
+    const TEN_W = BASE_SIZE;
+    const TEN_H = BASE_SIZE * 10;
+    const HUNDRED_W = BASE_SIZE * 10;
+    const HUNDRED_H = BASE_SIZE * 10;
+    
+    const MARGIN = 0; 
+
+    // --- STATE ---
+    let step = 0; 
+    let num1 = 0, num2 = 0;
+    let activeBlocks = []; 
+
+    const nextBtn = document.getElementById('nextBtn');
+    const backBtn = document.getElementById('backBtn');
+    const msg = document.getElementById('statusMsg');
+    const eqBox = document.getElementById('equation-box');
+
+    const lblLeft = document.getElementById('math-left');
+    const lblRight = document.getElementById('math-right');
+    const lbl100 = document.getElementById('math-col-100');
+    const lbl10 = document.getElementById('math-col-10');
+    const lbl1 = document.getElementById('math-col-1');
+
+    function nextStep() {
+        switch(step) {
+            case 0: spawnPhase(); break;
+            case 1: gatherPhase(); break; 
+            case 2: solvePhase(); break;
+            default: resetGame();
+        }
+    }
+
+    function prevStep() {
+        if(step <= 1) { resetGame(); return; }
+        if(step === 2) spawnPhase(); 
+        else if(step === 3) rebuildState(2); 
+    }
+
+    function updateEquation(text, append=false) {
+        if(append) eqBox.innerHTML += text;
+        else eqBox.innerHTML = text;
+    }
+
+    function rebuildState(targetStep) {
+        resetGameLogic();
+        num1 = parseInt(document.getElementById('inp1').value) || 0;
+        num2 = parseInt(document.getElementById('inp2').value) || 0;
+        spawnNumberInZone(num1, 'c1', 'stage-left');
+        spawnNumberInZone(num2, 'c2', 'stage-right');
+        lblLeft.innerText = decomposeToString(num1);
+        lblRight.innerText = decomposeToString(num2);
+        
+        document.body.classList.add('no-transition');
+
+        if (targetStep >= 2) {
+            positionUnitsStacked();
+            positionTensSideways();
+            positionHundreds();
+            
+            let u1 = activeBlocks.filter(b=>b.type==='unit' && b.color==='c1').length;
+            let u2 = activeBlocks.filter(b=>b.type==='unit' && b.color==='c2').length;
+            lbl1.innerText = `${u1+u2}`; 
+            
+            let t = activeBlocks.filter(b=>b.type==='ten').length * 10;
+            lbl10.innerText = t > 0 ? t : "";
+            
+            let h = activeBlocks.filter(b=>b.type==='hundred').length * 100;
+            lbl100.innerText = h > 0 ? h : "";
+
+            let totalT = Math.floor(num1/10)*10 + Math.floor(num2/10)*10;
+            let totalU = (num1%10) + (num2%10);
+            updateEquation(`${num1} + ${num2} = ${totalT} + ${totalU}`);
+
+            step = 2;
+            nextBtn.innerText = "3. SOLVE (REGROUP)";
+            msg.innerText = "Values gathered in columns.";
+        }
+
+        setTimeout(() => document.body.classList.remove('no-transition'), 50);
+        backBtn.disabled = false;
+    }
+
+    // --- PHASE 1: SPAWN (MODIFIED FOR SIDEWAYS DISPLAY) ---
+    function spawnPhase() {
+        resetGameLogic();
+        num1 = parseInt(document.getElementById('inp1').value) || 0;
+        num2 = parseInt(document.getElementById('inp2').value) || 0;
+
+        spawnNumberInZone(num1, 'c1', 'stage-left');
+        spawnNumberInZone(num2, 'c2', 'stage-right');
+
+        lblLeft.innerText = decomposeToString(num1);
+        lblRight.innerText = decomposeToString(num2);
+
+        updateEquation(`${num1} + ${num2}`);
+
+        step = 1;
+        nextBtn.innerText = "2. GATHER";
+        backBtn.disabled = false;
+        msg.innerText = "Numbers decomposed.";
+    }
+
+    function decomposeToString(n) {
+        let h = Math.floor(n / 100) * 100;
+        let t = Math.floor((n % 100) / 10) * 10;
+        let u = n % 10;
+        let parts = [];
+        if(h) parts.push(h);
+        if(t) parts.push(t);
+        if(u) parts.push(u);
+        return parts.length ? parts.join(' + ') : "0";
+    }
+
+    function spawnNumberInZone(n, colorClass, zoneId) {
+        const zone = document.getElementById(zoneId);
+        const rect = zone.getBoundingClientRect();
+        
+        let h = Math.floor(n / 100);
+        let t = Math.floor((n % 100) / 10);
+        let u = n % 10;
+
+        const baseY = rect.bottom - 20; 
+        const centerX = rect.left + rect.width / 2;
+        
+        const gap = 2; // small gap between sideways blocks
+
+        // 1. Hundreds (Still stacked vertically, if any)
+        const hX = centerX - 50;
+        for(let i=0; i<h; i++) createBlock('hundred', colorClass, hX, baseY - ((i+1)*(HUNDRED_H+MARGIN)));
+
+        // 2. Tens (SIDEWAYS Row)
+        // Center the row of tens
+        const tTotalW = t * (TEN_W + gap);
+        const tStartX = centerX - (tTotalW / 2);
+
+        for(let i=0; i<t; i++) {
+            let x = tStartX + (i * (TEN_W + gap));
+            let y = baseY - TEN_H; 
+            createBlock('ten', colorClass, x, y);
+        }
+
+        // 3. Units (SIDEWAYS Row)
+        // Position units ABOVE the tens row
+        const uTotalW = u * (UNIT_W + gap);
+        const uStartX = centerX - (uTotalW / 2);
+        
+        // If tens exist, sit above them. If not, sit at bottom.
+        const uBaseY = (t > 0) ? (baseY - TEN_H - 10) : baseY;
+
+        for(let i=0; i<u; i++) {
+            let x = uStartX + (i * (UNIT_W + gap));
+            let y = uBaseY - UNIT_H;
+            createBlock('unit', colorClass, x, y);
+        }
+    }
+
+    function createBlock(type, color, x, y) {
+        const el = document.createElement('div');
+        el.className = `block ${type} ${color}`;
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        document.body.appendChild(el); 
+        
+        el.style.transform = "scale(0)";
+        void el.offsetWidth;
+        el.style.transform = "scale(1)";
+
+        let obj = { el, type, color };
+        activeBlocks.push(obj);
+        return obj;
+    }
+
+    // --- PHASE 2: GATHER (STACK UP) ---
+    function gatherPhase() {
+        positionUnitsStacked();
+        positionTensSideways();
+        positionHundreds();
+
+        let u1 = activeBlocks.filter(b=>b.type==='unit' && b.color==='c1').length;
+        let u2 = activeBlocks.filter(b=>b.type==='unit' && b.color==='c2').length;
+        lbl1.innerText = `${u1+u2}`; 
+        
+        let t1 = Math.floor(num1/10)%10 * 10;
+        let t2 = Math.floor(num2/10)%10 * 10;
+        lbl10.innerText = `${t1+t2}`;
+        
+        let h1 = Math.floor(num1/100) * 100;
+        let h2 = Math.floor(num2/100) * 100;
+        if(h1+h2 > 0) lbl100.innerText = `${h1+h2}`;
+
+        // Eq Update: 17 + 15 = 20 + 12
+        let totalT = t1 + t2;
+        let totalU = u1 + u2;
+        updateEquation(` = ${totalT} + ${totalU}`, true);
+
+        step = 2;
+        nextBtn.innerText = "3. SOLVE (REGROUP)";
+        msg.innerText = "Tens grouped with Tens, Units with Units.";
+    }
+
+    function positionUnitsStacked() {
+        const col = document.getElementById('col-1').getBoundingClientRect();
+        const items = activeBlocks.filter(b => b.type === 'unit');
+        
+        const cx = col.left + col.width/2;
+        const bottomY = col.bottom - 10;
+
+        items.forEach((b, i) => {
+            b.el.style.left = (cx - UNIT_W/2) + 'px';
+            b.el.style.top = (bottomY - ((i+1)*(UNIT_H+MARGIN))) + 'px';
+        });
+    }
+
+    function positionTensSideways() {
+        const col = document.getElementById('col-10').getBoundingClientRect();
+        const items = activeBlocks.filter(b => b.type === 'ten');
+        const startX = col.left + 15; 
+        const bottomY = col.bottom - 10;
+        
+        items.forEach((obj, i) => {
+            let colIdx = i % 10; 
+            let rowIdx = Math.floor(i / 10); 
+            obj.el.style.left = (startX + (colIdx * (TEN_W + MARGIN))) + 'px';
+            obj.el.style.top = (bottomY - ((rowIdx + 1) * (TEN_H + MARGIN*4))) + 'px';
+        });
+    }
+
+    function positionHundreds() {
+        const col = document.getElementById('col-100').getBoundingClientRect();
+        const items = activeBlocks.filter(b => b.type === 'hundred');
+        const cx = col.left + col.width/2;
+        const bottomY = col.bottom - 10;
+        
+        items.forEach((obj, i) => {
+            obj.el.style.left = (cx - HUNDRED_W/2) + 'px';
+            obj.el.style.top = (bottomY - ((i+1)*(HUNDRED_H + MARGIN))) + 'px';
+        });
+    }
+
+    // --- PHASE 3: SOLVE (SINGLE SHOT) ---
+    function solvePhase() {
+        nextBtn.disabled = true; backBtn.disabled = true;
+        msg.innerText = "Regrouping and finalizing...";
+        
+        // 1. Blend Colors
+        activeBlocks.forEach(b => b.el.classList.add('unified'));
+
+        // 2. Execute Units -> Tens Regrouping
+        let units = activeBlocks.filter(b => b.type === 'unit');
+        
+        if (units.length >= 10) {
+            let group10 = units.slice(0, 10);
+            group10.forEach(b => b.el.classList.add('group-highlight'));
+
+            const col10 = document.getElementById('col-10').getBoundingClientRect();
+            const startX = col10.left + 15; 
+            const bottomY = col10.bottom - 10;
+            
+            let currentTens = activeBlocks.filter(b => b.type === 'ten');
+            let tIdx = currentTens.length; 
+            let colIdx = tIdx % 10; 
+            let rowIdx = Math.floor(tIdx / 10); 
+            
+            let destX = startX + (colIdx * (TEN_W + MARGIN));
+            let destBaseY = bottomY - ((rowIdx + 1) * (TEN_H + MARGIN*4)); 
+
+            // Fly & Stack
+            group10.forEach((b, i) => {
+                b.el.style.transition = "all 1.5s ease-in-out"; 
+                b.el.style.zIndex = 100 + i;
+                b.el.style.left = destX + 'px';
+                let offset = (9 - i) * UNIT_H; 
+                b.el.style.top = (destBaseY + offset) + 'px';
+            });
+
+            setTimeout(() => {
+                group10.forEach(b => {
+                    b.el.remove();
+                    const idx = activeBlocks.indexOf(b);
+                    if(idx > -1) activeBlocks.splice(idx, 1);
+                });
+
+                let rod = createBlock('ten', 'unified', destX, destBaseY);
+                setTimeout(() => rod.el.classList.add('final-carry'), 50);
+
+                positionUnitsStacked();
+
+                let tens = activeBlocks.filter(b => b.type === 'ten');
+                if(tens.length >= 10) {
+                    setTimeout(() => runTensRegroup(tens), 500);
+                } else {
+                    finalizeGame();
+                }
+
+            }, 1600);
+
+        } else {
+            finalizeGame();
+        }
+    }
+
+    function runTensRegroup(tens) {
+        let group = tens.slice(0, 10);
+        
+        const col100 = document.getElementById('col-100').getBoundingClientRect();
+        const cx = col100.left + col100.width/2;
+        const bottomY = col100.bottom - 10;
+        
+        let curH = activeBlocks.filter(b => b.type === 'hundred').length;
+        let destX = cx - HUNDRED_W/2;
+        let destY = bottomY - ((curH + 1) * (HUNDRED_H + MARGIN));
+
+        group.forEach((b, i) => {
+            b.el.style.transition = "all 1.2s ease-in-out";
+            b.el.style.left = (destX + (i*TEN_W)) + 'px';
+            b.el.style.top = destY + 'px';
+        });
+
+        setTimeout(() => {
+            group.forEach(b => {
+                b.el.remove();
+                const idx = activeBlocks.indexOf(b);
+                if(idx > -1) activeBlocks.splice(idx, 1);
+            });
+            
+            let flat = createBlock('hundred', 'unified', destX, destY);
+            setTimeout(() => flat.el.classList.add('final-carry'), 50);
+            
+            positionTensSideways();
+            finalizeGame();
+        }, 1300);
+    }
+
+    function finalizeGame() {
+        let u = activeBlocks.filter(b=>b.type==='unit').length;
+        let t = activeBlocks.filter(b=>b.type==='ten').length * 10;
+        let h = activeBlocks.filter(b=>b.type==='hundred').length * 100;
+        
+        lbl1.innerText = u;
+        lbl10.innerText = t > 0 ? t : "";
+        lbl100.innerText = h > 0 ? h : "";
+
+        msg.innerText = `Result: ${num1+num2}`;
+        updateEquation(` = ${num1+num2}`, true);
+        
+        step = 3;
+        nextBtn.innerText = "RESET";
+        nextBtn.disabled = false; backBtn.disabled = false;
+    }
+
+    function resetGameLogic() {
+        activeBlocks.forEach(b => b.el.remove());
+        activeBlocks = [];
+        lblLeft.innerText = ""; lblRight.innerText = "";
+        lbl100.innerText = ""; lbl10.innerText = ""; lbl1.innerText = "";
+        document.body.classList.remove('no-transition');
+    }
+
+    function resetGame() {
+        resetGameLogic();
+        step = 0;
+        nextBtn.innerText = "1. SPAWN";
+        msg.innerText = "Enter numbers to start";
+        eqBox.innerText = "Visual Sum";
+    }
+
+</script>
+
+<script src="../assets/js/app.js"></script>
+</body>
+</html>
