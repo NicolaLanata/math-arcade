@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Division Factory</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<style>
+  /* --- GLOBAL STYLES --- */
+  body {
+      margin: 0; padding: 0; background: #050510; color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;
+      overflow: hidden; user-select: none;
+  }
+   
+  button {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: bold;
+      cursor: pointer; transition: all 0.2s; border: none; outline: none;
+  }
+  button:active { transform: scale(0.98); }
+
+  /* --- SCREENS --- */
+  .screen {
+      width: 1000px; max-width: 95%; height: 600px;
+      background: #0a0a15; border: 2px solid #333; border-radius: 12px;
+      box-shadow: 0 0 50px rgba(0,0,0,0.5);
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+  }
+  .screen.active { display: flex; }
+
+  /* --- MENU SCREEN --- */
+  h1 { color: #64ffda; text-shadow: 0 0 10px rgba(100,255,218,0.3); margin-bottom: 40px; font-size: 40px; text-transform: uppercase; letter-spacing: 2px; }
+  .grid-menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 80%; }
+  .menu-btn {
+      padding: 20px; font-size: 18px; background: #1a1a2e; color: #fff;
+      border: 2px solid #333; border-radius: 12px;
+      display: flex; flex-direction: column; align-items: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .menu-btn:hover { border-color: #64ffda; background: #222; box-shadow: 0 0 15px rgba(100,255,218,0.2); transform: translateY(-3px); }
+  .menu-icon { font-size: 50px; margin-bottom: 10px; }
+   
+  /* --- SETUP SCREEN --- */
+  .input-group { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+  input[type="number"] {
+      padding: 15px; font-size: 30px; width: 150px; text-align: center;
+      background: #000; color: #64ffda; border: 2px solid #333; border-radius: 8px; font-weight: bold;
+  }
+  input:focus { border-color: #64ffda; outline: none; }
+   
+  .start-btn {
+      padding: 15px 50px; font-size: 24px; background: #27ae60; color: white; border-radius: 8px; margin-top: 20px; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+  }
+  .start-btn:hover { background: #2ecc71; transform: scale(1.05); }
+   
+  .back-btn {
+      position: absolute; top: 20px; left: 20px; padding: 10px 20px; background: #333; color: #aaa; border-radius: 5px; font-size: 14px; z-index: 100;
+  }
+  .back-btn:hover { background: #444; color: white; }
+
+  /* --- GAME SCREEN --- */
+  .anim-box {
+      width: 90%; height: 420px; border: 2px solid #333;
+      background: radial-gradient(circle at center, #16213e 0%, #000 100%);
+      position: relative; border-radius: 8px; overflow: hidden; margin-bottom: 20px;
+  }
+   
+  /* HUD */
+  .hud { width: 90%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; height: 40px; }
+  .status-text { font-size: 24px; color: #64ffda; font-weight: bold; text-shadow: 0 0 10px rgba(100,255,218,0.3); }
+  .math-display { font-size: 28px; color: #f1c40f; opacity: 0; transition: opacity 0.5s; font-weight: bold; font-family: monospace; }
+
+  /* Question */
+  .question-text {
+      width: 90%;
+      font-size: 18px;
+      color: #ccc;
+      line-height: 1.2;
+      margin-bottom: 8px;
+  }
+
+  /* Prevent overlap with the Exit button (top-left) */
+  #gameScreen .question-text,
+  #gameScreen .hud {
+      padding-left: 110px;
+      box-sizing: border-box;
+  }
+
+  /* BINS */
+  .bins-container {
+      position: absolute; bottom: 35px; left: 20px; right: 20px; height: 180px;
+      display: flex; justify-content: center; align-items: flex-end; gap: 15px;
+  }
+  .bin {
+      flex: 1; max-width: 170px; height: 170px; position: relative;
+      background: rgba(255,255,255,0.03);
+      border: 2px solid #444; border-top: none; border-radius: 0 0 8px 8px;
+      transition: border-color 0.3s, background 0.3s;
+  }
+  .bin.highlight { border-color: #f1c40f; background: rgba(241, 196, 15, 0.1); }
+   
+  .bin-label {
+      position: absolute; bottom: -32px; width: 100%; text-align: center;
+      font-size: 12px; color: #777; font-weight: bold; text-transform: uppercase;
+      line-height: 1.1;
+  }
+   
+  .cutoff-line {
+      position: absolute; left: 20px; right: 20px; height: 2px;
+      border-top: 2px dashed #e74c3c; z-index: 5; opacity: 0; pointer-events: none; transition: opacity 1s;
+  }
+  .cutoff-label {
+      position: absolute; right: 0; top: -25px; background: #000; padding: 4px 8px;
+      color: #e74c3c; font-size: 14px; font-weight: bold; border: 1px solid #e74c3c; border-radius: 4px;
+  }
+
+  /* --- GAME PIECES --- */
+   
+  /* The Item */
+  .item {
+      position: absolute; z-index: 20; display: flex; align-items: center; justify-content: center;
+      transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+   
+  /* The Body Container */
+  .container-body {
+      position: absolute; z-index: 30; transform: translate(-50%, -50%);
+      opacity: 0; transition: all 0.5s;
+  }
+   
+  /* -- THEME: CARS / BIKES -- */
+  .theme-vehicle .item { width: 24px; height: 24px; border-radius: 50%; background: #222; border: 3px solid #ddd; }
+  .theme-vehicle .item::after { content: ''; width: 6px; height: 6px; background: #ddd; border-radius: 50%; }
+   
+  .car-body-shape { width: 100px; height: 60px; background: #3498db; border: 2px solid #fff; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+  .bike-body-shape { width: 80px; height: 12px; background: #e74c3c; border-radius: 6px; border: 1px solid #fff; }
+   
+  /* -- THEME: GIRAFFE -- */
+  .theme-giraffe .item { width: 10px; height: 35px; background: #f39c12; border: 1px solid #d35400; border-radius: 4px; }
+   
+  .giraffe-body-shape { 
+      width: 90px; height: 45px; background: #f1c40f; 
+      border-radius: 10px; border: 2px solid #f39c12; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  }
+  .giraffe-body-shape::before {
+      content: ''; position: absolute;
+      bottom: 80%; left: 10%;
+      width: 15px; height: 40px;
+      background: #f1c40f; border: 2px solid #f39c12; border-bottom: none;
+      transform: rotate(-15deg); transform-origin: bottom center; 
+  }
+  .giraffe-body-shape::after {
+      content: ''; position: absolute;
+      bottom: 160%; left: -5%;
+      width: 25px; height: 18px;
+      background: #f1c40f; border: 2px solid #f39c12;
+      border-radius: 8px;
+      transform: rotate(-15deg);
+  }
+
+  /* -- THEME: SPIDER/OCTOPUS -- */
+  .theme-spider .item { 
+      width: 8px; height: 35px; background: #95a5a6; border-radius: 3px; border: 1px solid #7f8c8d;
+  }
+  .theme-octopus .item {
+      width: 10px; height: 40px; background: #9b59b6; border-radius: 4px; border: 1px solid #8e44ad;
+  }
+   
+  .spider-body-shape { width: 50px; height: 50px; background: #2c3e50; border-radius: 50%; border: 2px solid #7f8c8d; }
+  .octopus-body-shape { width: 60px; height: 60px; background: #8e44ad; border-radius: 50%; border: 2px solid #9b59b6; }
+
+  /* -- THEME: EGGS (Dozen) -- */
+  /* Egg shape using border-radius magic */
+  .theme-egg .item { 
+      width: 18px; height: 24px; background: #ecf0f1; 
+      border: 1px solid #bdc3c7; 
+      border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  }
+  .egg-body-shape { 
+      width: 150px; height: 60px; 
+      background: #d35400; 
+      border: 3px solid #e67e22; 
+      border-radius: 4px; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  }
+
+  /* Controls */
+  .action-btn {
+      padding: 12px 40px; font-size: 20px; background: rgba(100,255,218,0.1); 
+      color: #64ffda; border: 1px solid #64ffda; border-radius: 8px;
+      box-shadow: 0 0 15px rgba(100,255,218,0.2);
+  }
+  .action-btn:hover { background: #64ffda; color: #000; transform: scale(1.05); }
+  .action-btn:disabled { border-color: #555; color: #555; background: transparent; cursor: default; box-shadow: none; transform: none; }
+
+</style>
+
+  <meta name="theme-color" content="#0a1220">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
+  <link rel="icon" href="../assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/arcade.css">
+
+</head>
+<body class="arcade arcade-game arcade-standard" data-arcade-page="game">
+
+<div id="menuScreen" class="screen active">
+  <h1>DIVISION FACTORY</h1>
+  <div class="grid-menu">
+      <button class="menu-btn" onclick="selectTheme('bike')"><span class="menu-icon">🚲</span>BIKES (Div 2)</button>
+      <button class="menu-btn" onclick="selectTheme('car')"><span class="menu-icon">🚗</span>CARS (Div 4)</button>
+      <button class="menu-btn" onclick="selectTheme('giraffe')"><span class="menu-icon">🦒</span>GIRAFFES (Div 4)</button>
+      <button class="menu-btn" onclick="selectTheme('spider')"><span class="menu-icon">🕷️</span>SPIDERS (Div 8)</button>
+      <button class="menu-btn" onclick="selectTheme('octopus')"><span class="menu-icon">🐙</span>OCTOPUS (Div 8)</button>
+      <button class="menu-btn" onclick="selectTheme('egg')"><span class="menu-icon">🧺</span>EGGS (Div 12)</button>
+  </div>
+</div>
+
+<div id="setupScreen" class="screen">
+  <button class="back-btn" onclick="goHome()">Back</button>
+  <h2 id="setupTitle" style="color: #ccc; margin-bottom: 30px; font-size: 28px;">How many wheels?</h2>
+  <div class="input-group">
+      <input type="number" id="itemInput" min="1" max="60" value="14">
+      <div style="color: #666; font-size: 14px;">(Max 60)</div>
+      <button class="start-btn" onclick="startGame()">ENTER FACTORY</button>
+  </div>
+</div>
+
+<div id="gameScreen" class="screen">
+  <button class="back-btn" onclick="goHome()">Exit</button>
+   
+  <div class="question-text" id="questionText"></div>
+
+  <div class="hud">
+      <div class="status-text" id="statusText">Ready</div>
+      <div class="math-display" id="mathDisplay"></div>
+  </div>
+
+  <div class="anim-box" id="animBox">
+      <div class="cutoff-line" id="cutLine"><div class="cutoff-label" id="cutLabel">LIMIT</div></div>
+      <div class="bins-container" id="binsArea"></div>
+  </div>
+
+  <button id="actionBtn" class="action-btn" onclick="handleAction()">1. SORT ITEMS</button>
+</div>
+
+<script>
+  // --- CONFIG DATA ---
+  const THEMES = {
+      bike: { name: "Bike", divisor: 2, item: "Wheel", class: "theme-vehicle", bodyClass: "bike-body-shape", color: "#e74c3c", type: "Linear" },
+      car: { name: "Car", divisor: 4, item: "Tire", class: "theme-vehicle", bodyClass: "car-body-shape", color: "#3498db", type: "Linear" },
+      giraffe: { name: "Giraffe", divisor: 4, item: "Leg", class: "theme-giraffe", bodyClass: "giraffe-body-shape", color: "#f1c40f", type: "Linear" },
+      spider: { name: "Spider", divisor: 8, item: "Leg", class: "theme-spider", bodyClass: "spider-body-shape", color: "#bdc3c7", type: "Radial" },
+      octopus: { name: "Octopus", divisor: 8, item: "Tentacle", class: "theme-octopus", bodyClass: "octopus-body-shape", color: "#9b59b6", type: "Radial" },
+      egg: { name: "Carton", divisor: 12, item: "Egg", class: "theme-egg", bodyClass: "egg-body-shape", color: "#e67e22", type: "Linear" }
+  };
+
+  const ROLE_LABELS = {
+      bike: [
+          "Wheel 1<br>(left)",
+          "Wheel 2<br>(right)"
+      ],
+      car: [
+          "Tire 1<br>(front left)",
+          "Tire 2<br>(front right)",
+          "Tire 3<br>(back left)",
+          "Tire 4<br>(back right)"
+      ],
+      giraffe: [
+          "Leg 1",
+          "Leg 2",
+          "Leg 3",
+          "Leg 4"
+      ],
+      spider: [
+          "Leg 1",
+          "Leg 2",
+          "Leg 3",
+          "Leg 4",
+          "Leg 5",
+          "Leg 6",
+          "Leg 7",
+          "Leg 8"
+      ],
+      octopus: [
+          "Tentacle 1",
+          "Tentacle 2",
+          "Tentacle 3",
+          "Tentacle 4",
+          "Tentacle 5",
+          "Tentacle 6",
+          "Tentacle 7",
+          "Tentacle 8"
+      ],
+      egg: [
+          "Egg 1",
+          "Egg 2",
+          "Egg 3",
+          "Egg 4",
+          "Egg 5",
+          "Egg 6",
+          "Egg 7",
+          "Egg 8",
+          "Egg 9",
+          "Egg 10",
+          "Egg 11",
+          "Egg 12"
+      ]
+  };
+
+  // --- STATE ---
+  let currentThemeKey = 'car';
+  let config = {};
+  let totalItems = 0;
+  let itemsArr = [];
+  let bins = [];
+  let step = 0; 
+  let finishedCount = 0;
+  let minHeight = 0;
+
+  const screens = {
+      menu: document.getElementById('menuScreen'),
+      setup: document.getElementById('setupScreen'),
+      game: document.getElementById('gameScreen')
+  };
+  const ui = {
+      setupTitle: document.getElementById('setupTitle'),
+      input: document.getElementById('itemInput'),
+      box: document.getElementById('animBox'),
+      binsArea: document.getElementById('binsArea'),
+      status: document.getElementById('statusText'),
+      math: document.getElementById('mathDisplay'),
+      cutLine: document.getElementById('cutLine'),
+      cutLabel: document.getElementById('cutLabel'),
+      actionBtn: document.getElementById('actionBtn'),
+      question: document.getElementById('questionText')
+  };
+
+  function showScreen(name) {
+      Object.values(screens).forEach(s => s.classList.remove('active'));
+      screens[name].classList.add('active');
+  }
+
+  function goHome() {
+      showScreen('menu');
+      ui.box.querySelectorAll('.item, .container-body').forEach(e => e.remove());
+      ui.binsArea.innerHTML = '';
+      ui.cutLine.style.opacity = 0;
+      ui.math.style.opacity = 0;
+      ui.question.innerText = "";
+  }
+
+  function selectTheme(key) {
+      currentThemeKey = key;
+      config = THEMES[key];
+      ui.setupTitle.innerText = `How many ${config.item}s?`;
+      ui.input.value = (config.divisor * 2) + Math.floor(config.divisor/2); 
+      showScreen('setup');
+  }
+
+  function startGame() {
+      let val = parseInt(ui.input.value);
+      if(!val || val < 1) val = 1;
+      if(val > 60) val = 60;
+      totalItems = val;
+       
+      setupGameBoard();
+      showScreen('game');
+  }
+
+  // --- TEXT HELPERS ---
+  function pluralize(wordLower) {
+      if(!wordLower) return wordLower;
+      if(wordLower.endsWith('s') || wordLower.endsWith('x') || wordLower.endsWith('z') || wordLower.endsWith('ch') || wordLower.endsWith('sh')) {
+          return wordLower + "es";
+      }
+      return wordLower + "s";
+  }
+
+  function getQuestionText() {
+      const partPlural = pluralize(config.item.toLowerCase());
+      const objSing = config.name.toLowerCase();
+      const objPlural = pluralize(objSing);
+      return `You have ${totalItems} ${partPlural}. Each ${objSing} needs ${config.divisor} ${partPlural}. How many ${objPlural} can you build? How many ${partPlural} are left over?`;
+  }
+
+  // --- GAME LOGIC ---
+
+  function setupGameBoard() {
+      step = 0;
+      finishedCount = 0;
+      itemsArr = [];
+      bins = Array.from({length: config.divisor}, () => []);
+       
+      ui.box.className = "anim-box " + (config.class || "");
+
+      ui.question.innerText = getQuestionText();
+
+      ui.status.innerText = `Pile of ${totalItems} ${config.item}s`;
+      ui.status.style.color = config.color;
+      ui.math.innerHTML = "";
+      ui.math.style.opacity = 0;
+      ui.cutLine.style.opacity = 0;
+      ui.actionBtn.innerText = "1. SORT ITEMS";
+      ui.actionBtn.disabled = false;
+      ui.actionBtn.style.display = "inline-block";
+      ui.actionBtn.style.borderColor = config.color;
+      ui.actionBtn.style.color = config.color;
+
+      ui.box.querySelectorAll('.item, .container-body, .finished-label').forEach(e => e.remove());
+      ui.binsArea.innerHTML = '';
+
+      const roleLabels = ROLE_LABELS[currentThemeKey] || [];
+
+      for(let i=0; i<config.divisor; i++) {
+          let bin = document.createElement('div');
+          bin.className = 'bin';
+          bin.style.borderColor = "#444"; 
+           
+          let label = document.createElement('div');
+          label.className = 'bin-label';
+          label.innerHTML = roleLabels[i] || (i+1);
+           
+          bin.appendChild(label);
+          ui.binsArea.appendChild(bin);
+      }
+
+      for(let i=0; i<totalItems; i++) {
+          let item = document.createElement('div');
+          item.className = "item";
+          item.style.left = (Math.random() * 80 + 10) + '%';
+          item.style.top = (Math.random() * 25 + 5) + '%';
+          item.style.transform = `rotate(${Math.random()*360}deg)`;
+           
+          ui.box.appendChild(item);
+          itemsArr.push(item);
+      }
+  }
+
+  function handleAction() {
+      if(step === 0) runSort();
+      else if(step === 1) runBuild();
+  }
+
+  // --- STEP 1: SMART GRID SORT ---
+  function runSort() {
+      step = 1;
+      ui.actionBtn.disabled = true;
+      ui.status.innerText = "Sorting into groups...";
+
+      let binRects = [];
+      let boxRect = ui.box.getBoundingClientRect();
+      let binEls = ui.binsArea.children;
+       
+      for(let i=0; i<binEls.length; i++) {
+          let r = binEls[i].getBoundingClientRect();
+          binRects.push({
+              left: r.left - boxRect.left,
+              width: r.width,
+              bottom: r.top - boxRect.top + r.height
+          });
+      }
+
+      itemsArr.forEach((item, i) => {
+          setTimeout(() => {
+              let binIdx = i % config.divisor;
+              let binObj = bins[binIdx];
+              let rect = binRects[binIdx];
+               
+              let itemsPerBin = binObj.length;
+               
+              let cols = 3; 
+              let spacingX = 25;
+              let spacingY = 25;
+
+              // Thinner items logic
+              if(config.name === 'Giraffe' || config.name === 'Spider' || config.name === 'Octopus') {
+                  cols = 6; 
+                  spacingX = 15;
+                  spacingY = 35;
+              }
+
+              // Adjust for tight bins (like the 12 eggs case)
+              if (rect.width < 50) {
+                 cols = 2; spacingX = 15;
+              } else if (rect.width < 80) {
+                 cols = Math.max(2, cols - 2);
+              }
+
+              let row = Math.floor(itemsPerBin / cols);
+              let col = itemsPerBin % cols;
+               
+              let xOffset = (rect.width - (cols * spacingX)) / 2;
+              if(xOffset < 0) xOffset = 0;
+               
+              let targetX = rect.left + xOffset + (col * spacingX) + 12;
+              let targetY = rect.bottom - 15 - (row * spacingY);
+               
+              item.style.left = targetX + 'px';
+              item.style.top = targetY + 'px';
+              item.style.transform = 'rotate(0deg)'; 
+               
+              binObj.push(item);
+
+              binEls[binIdx].style.borderColor = config.color;
+              setTimeout(() => binEls[binIdx].style.borderColor = "#444", 200);
+
+              if(i === totalItems - 1) {
+                  setTimeout(calcLogic, 800);
+              }
+          }, i * 50); 
+      });
+  }
+
+  function calcLogic() {
+      let heights = bins.map(b => b.length);
+      minHeight = Math.min(...heights);
+      let remainder = totalItems - (minHeight * config.divisor);
+
+      ui.status.innerText = "Sorting Complete";
+      ui.math.innerHTML = `${totalItems} &divide; ${config.divisor} = <span style="color:${config.color}">${minHeight}</span> (Rem <span style="color:#e74c3c">${remainder}</span>)`;
+      ui.math.style.opacity = 1;
+
+      if(minHeight > 0) {
+          let binEls = ui.binsArea.children;
+          let boxRect = ui.box.getBoundingClientRect();
+          let r = binEls[0].getBoundingClientRect();
+          let binBottom = r.top - boxRect.top + r.height;
+           
+          // Re-calculate line Y based on grid logic
+          let cols = 3;
+          let spacingY = 25;
+          if(config.name === 'Giraffe' || config.name === 'Spider' || config.name === 'Octopus') {
+              cols = 6; spacingY = 35;
+          }
+          if (r.width < 50) { cols = 2; }
+          else if (r.width < 80) { cols = Math.max(2, cols - 2); }
+
+          let rows = Math.ceil(minHeight / cols);
+          let lineY = binBottom - 15 - (rows * spacingY) + 20; 
+           
+          ui.cutLine.style.top = lineY + 'px';
+          ui.cutLabel.innerText = "LIMIT: " + minHeight;
+          ui.cutLabel.style.color = config.color;
+          ui.cutLabel.style.borderColor = config.color;
+          ui.cutLine.style.borderTopColor = config.color;
+          ui.cutLine.style.opacity = 1;
+      }
+
+      bins.forEach(bin => {
+          bin.forEach((item, idx) => {
+              if(idx >= minHeight) {
+                  item.style.backgroundColor = "#e74c3c";
+                  if(config.name !== 'Car' && config.name !== 'Bike') item.style.borderColor = "#c0392b";
+                  item.style.zIndex = 100;
+              }
+          });
+      });
+
+      ui.actionBtn.innerText = "2. ASSEMBLE";
+      ui.actionBtn.disabled = false;
+  }
+
+  // --- STEP 2: BUILD ---
+  function runBuild() {
+      ui.actionBtn.disabled = true;
+
+      if(finishedCount >= minHeight) {
+          ui.status.innerHTML = `<span style="color:#e74c3c">Cannot Build! Stacks empty.</span>`;
+          setTimeout(() => {
+              ui.status.innerText = "Production Finished.";
+              ui.actionBtn.style.display = 'none';
+          }, 1500);
+          return;
+      }
+
+      ui.status.innerText = `Building ${config.name} ${finishedCount+1}...`;
+       
+      let partsToMove = [];
+      let targetIdx = minHeight - 1 - finishedCount; 
+       
+      for(let b=0; b<bins.length; b++) {
+          let p = bins[b][targetIdx];
+          p.style.backgroundColor = ""; 
+          p.style.borderColor = "";
+          partsToMove.push(p);
+      }
+
+      let body = document.createElement('div');
+      body.className = "container-body " + config.bodyClass;
+       
+      let asmX = ui.box.offsetWidth / 2;
+      let asmY = 150;
+       
+      body.style.left = asmX + 'px';
+      body.style.top = asmY + 'px';
+       
+      ui.box.appendChild(body);
+      setTimeout(() => body.style.opacity = 1, 50);
+
+      partsToMove.forEach((item, i) => {
+          let off = getOffset(i, config.divisor, config.name);
+           
+          item.style.left = (asmX + off.x - item.offsetWidth/2) + 'px';
+          item.style.top = (asmY + off.y - item.offsetHeight/2) + 'px';
+          item.style.transform = `rotate(${off.r}deg)`;
+
+          // FIX: For eggs (Carton), items must be ON TOP of the body (z-index 40).
+          // For cars/spiders, items go UNDER the body.
+          if (config.name === 'Carton') {
+              item.style.zIndex = 40; 
+          } else {
+              item.style.zIndex = 20;
+          }
+      });
+
+      setTimeout(() => {
+          finishedCount++;
+           
+          let parkCols = 4;
+          let spacing = 120;
+          let row = Math.floor((finishedCount-1) / parkCols);
+          let col = (finishedCount-1) % parkCols;
+           
+          let startX = (ui.box.offsetWidth - ((parkCols-1)*spacing)) / 2;
+          let parkX = startX + (col * spacing);
+          let parkY = 80 + (row * 100); 
+           
+          body.style.left = parkX + 'px';
+          body.style.top = parkY + 'px';
+          body.style.transform = "translate(-50%, -50%) scale(0.7)";
+           
+          partsToMove.forEach((item, i) => {
+              let off = getOffset(i, config.divisor, config.name);
+              item.style.left = (parkX + (off.x*0.7) - item.offsetWidth/2) + 'px';
+              item.style.top = (parkY + (off.y*0.7) - item.offsetHeight/2) + 'px';
+          });
+           
+          ui.actionBtn.disabled = false;
+           
+          if(finishedCount >= minHeight) {
+                ui.status.innerHTML = `Done. Remainder: <span style="color:#e74c3c">${totalItems - (minHeight*config.divisor)}</span>`;
+                ui.actionBtn.style.display = 'none';
+          } else {
+                ui.status.innerText = `${config.name} ${finishedCount} Built.`;
+          }
+
+      }, 1000);
+  }
+
+  // --- GEOMETRY HELPERS ---
+  function getOffset(index, total, name) {
+       
+      if(name === 'Car') {
+          let x = (index%2===0) ? -25 : 25;
+          let y = (index<2) ? -25 : 25;
+          return {x:x, y:y, r:0};
+      }
+       
+      if(name === 'Bike') {
+          let x = (index===0) ? -35 : 35;
+          return {x:x, y:15, r:0}; 
+      }
+       
+      if(name === 'Giraffe') {
+          let spacing = 15;
+          let start = -((total-1)*spacing)/2; 
+          return {x: start + (index*spacing), y: 25, r:0}; 
+      }
+
+      if(name === 'Carton') {
+          // 12 items. 2 rows of 6.
+          let col = index % 6;
+          let row = Math.floor(index / 6);
+          // Width approx 140. Spacing ~22px
+          let startX = -((5 * 22)/2);
+          let x = startX + (col * 22);
+          let y = (row === 0) ? -12 : 12;
+          return {x: x, y: y, r: 0};
+      }
+       
+      // Radial (Spider, Octopus)
+      let angle = (index * (360/total)); 
+      if(name === 'Spider' || name === 'Octopus') angle += 22.5;
+       
+      let rad = angle * (Math.PI/180);
+      let dist = 45; 
+       
+      let x = Math.cos(rad) * dist;
+      let y = Math.sin(rad) * dist;
+       
+      let r = (name === 'Spider' || name === 'Octopus') ? angle + 90 : angle;
+       
+      return {x:x, y:y, r:r};
+  }
+
+</script>
+
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

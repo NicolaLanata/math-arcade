@@ -1,0 +1,388 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Universal Atomic Lab</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+  /* --- GLOBAL STYLES --- */
+  body {
+      margin: 0; padding: 0; background: #000; color: white;
+      font-family: 'Courier New', Courier, monospace;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; 
+      height: 100vh; overflow: hidden; user-select: none;
+  }
+  
+  button {
+      font-family: 'Courier New', Courier, monospace; font-weight: bold;
+      cursor: pointer; transition: all 0.2s; border: none; outline: none;
+  }
+  button:active { transform: scale(0.98); }
+
+  /* --- SCREENS --- */
+  .screen {
+      width: 1000px; max-width: 95%; height: 600px;
+      background: #0a0a15; border: 2px solid #333; border-radius: 12px;
+      box-shadow: 0 0 50px rgba(0, 243, 255, 0.2);
+      display: none; flex-direction: column; align-items: center; 
+      box-sizing: border-box; position: relative; overflow: hidden;
+  }
+  .screen.active { display: flex; }
+
+  /* Layout */
+  #gameScreen { justify-content: flex-start; padding-top: 100px; }
+  #setupScreen { justify-content: center; }
+
+  /* --- SETUP SCREEN --- */
+  h1 { color: #00f3ff; text-shadow: 0 0 15px rgba(0, 243, 255, 0.5); margin-bottom: 30px; font-size: 36px; text-transform: uppercase; letter-spacing: 2px; }
+  
+  .control-panel { display: flex; gap: 40px; margin-bottom: 30px; }
+  .input-group { display: flex; flex-direction: column; align-items: center; }
+  .input-label { color: #aaa; margin-bottom: 10px; font-size: 14px; text-transform: uppercase; }
+  
+  input[type="number"] {
+      padding: 15px; font-size: 30px; width: 120px; text-align: center;
+      background: #050510; color: #00f3ff; border: 2px solid #333; border-radius: 8px;
+  }
+  input:focus { border-color: #00f3ff; outline: none; box-shadow: 0 0 10px rgba(0,243,255,0.2); }
+
+  #elementPreview {
+      height: 40px; font-size: 20px; color: #f1c40f; font-weight: bold; text-shadow: 0 0 5px #f1c40f;
+      margin-top: 10px;
+  }
+
+  .start-btn {
+      padding: 15px 50px; font-size: 22px; background: rgba(0, 243, 255, 0.15); 
+      color: #00f3ff; border: 1px solid #00f3ff; border-radius: 6px; text-transform: uppercase;
+  }
+  .start-btn:hover { background: #00f3ff; color: #000; box-shadow: 0 0 20px rgba(0, 243, 255, 0.6); }
+
+  /* --- GAME SCREEN --- */
+  .anim-box {
+      width: 90%; height: 420px; border: 2px solid #333;
+      background: radial-gradient(circle at center, #121225 0%, #000000 100%);
+      position: relative; border-radius: 8px; overflow: hidden; margin-bottom: 20px;
+  }
+  
+  .star { position: absolute; background: white; border-radius: 50%; opacity: 0.5; animation: twinkle 4s infinite; }
+  @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+
+  /* HUD */
+  .hud { width: 90%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; height: 40px;}
+  .status-text { font-size: 24px; color: #00f3ff; font-weight: bold; text-shadow: 0 0 5px rgba(0,243,255,0.5); }
+  .math-display { font-size: 28px; color: #f1c40f; opacity: 1; font-weight: bold; }
+
+  /* --- ATOMIC ASSETS --- */
+  .nucleus {
+    position: absolute; width: 50px; height: 50px; border-radius: 50%;
+    background: radial-gradient(circle, #ff7e5f 30%, #feb47b 100%);
+    box-shadow: 0 0 20px rgba(255, 126, 95, 0.5);
+    z-index: 5; transform: translate(-50%, -50%);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 16px; color: #330000;
+    transition: all 0.5s;
+  }
+  
+  .electron { 
+      position: absolute; width: 12px; height: 12px; border-radius: 50%;
+      background: #00f3ff; box-shadow: 0 0 8px #00f3ff; z-index: 10;
+      transform: translate(-50%, -50%) scale(0); /* Start hidden */
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .atom-label {
+      position: absolute; font-size: 12px; font-weight: bold; color: #00f3ff;
+      transform: translate(-50%, -50%); pointer-events: none; opacity: 0.7;
+  }
+
+  /* Controls */
+  .action-btn {
+      padding: 12px 30px; font-size: 18px; background: rgba(0,243,255,0.1); 
+      color: #00f3ff; border: 1px solid #00f3ff; border-radius: 6px;
+  }
+  .action-btn:hover { background: #00f3ff; color: #000; box-shadow: 0 0 15px #00f3ff; }
+  .action-btn:disabled { border-color: #555; color: #555; background: transparent; cursor: default; box-shadow: none; }
+  
+  .back-btn {
+      position: absolute; top: 20px; left: 20px; padding: 10px 20px; background: #333; color: #aaa; border-radius: 5px; font-size: 14px; z-index: 100;
+  }
+  .back-btn:hover { background: #444; color: white; }
+
+</style>
+
+  <meta name="theme-color" content="#0a1220">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
+  <link rel="icon" href="../assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/arcade.css">
+
+</head>
+<body class="arcade arcade-game arcade-standard" data-arcade-page="game">
+
+<div id="setupScreen" class="screen active">
+    <h1>Universal Atomic Lab</h1>
+    
+    <div class="control-panel">
+        <div class="input-group">
+            <div class="input-label">Number of Atoms</div>
+            <input type="number" id="atomCountInput" min="1" max="15" value="4">
+        </div>
+        
+        <div class="input-group">
+            <div class="input-label">Atomic Number (Electrons)</div>
+            <input type="number" id="atomicNumInput" min="1" max="118" value="94" oninput="updatePreview()">
+        </div>
+    </div>
+    
+    <div id="elementPreview">Target: 4 Plutonium Atoms (4 x 94)</div>
+    
+    <button class="start-btn" onclick="startLab()">Initialize System</button>
+</div>
+
+<div id="gameScreen" class="screen">
+    <button class="back-btn" onclick="goHome()">Exit Lab</button>
+    
+    <div class="hud">
+        <div class="status-text" id="statusText">System Ready</div>
+        <div class="math-display" id="mathDisplay">Total Electrons: 0</div>
+    </div>
+
+    <div class="anim-box" id="animBox">
+        </div>
+
+    <button id="actionBtn" class="action-btn" onclick="runMultiplication()">START ASSEMBLY</button>
+</div>
+
+<script>
+    // --- DATABASE: FULL PERIODIC TABLE (1-118) ---
+    const PERIODIC_TABLE = {
+        1: {n:"Hydrogen",s:"H"}, 2: {n:"Helium",s:"He"}, 3: {n:"Lithium",s:"Li"}, 4: {n:"Beryllium",s:"Be"},
+        5: {n:"Boron",s:"B"}, 6: {n:"Carbon",s:"C"}, 7: {n:"Nitrogen",s:"N"}, 8: {n:"Oxygen",s:"O"},
+        9: {n:"Fluorine",s:"F"}, 10: {n:"Neon",s:"Ne"}, 11: {n:"Sodium",s:"Na"}, 12: {n:"Magnesium",s:"Mg"},
+        13: {n:"Aluminum",s:"Al"}, 14: {n:"Silicon",s:"Si"}, 15: {n:"Phosphorus",s:"P"}, 16: {n:"Sulfur",s:"S"},
+        17: {n:"Chlorine",s:"Cl"}, 18: {n:"Argon",s:"Ar"}, 19: {n:"Potassium",s:"K"}, 20: {n:"Calcium",s:"Ca"},
+        21: {n:"Scandium",s:"Sc"}, 22: {n:"Titanium",s:"Ti"}, 23: {n:"Vanadium",s:"V"}, 24: {n:"Chromium",s:"Cr"},
+        25: {n:"Manganese",s:"Mn"}, 26: {n:"Iron",s:"Fe"}, 27: {n:"Cobalt",s:"Co"}, 28: {n:"Nickel",s:"Ni"},
+        29: {n:"Copper",s:"Cu"}, 30: {n:"Zinc",s:"Zn"}, 31: {n:"Gallium",s:"Ga"}, 32: {n:"Germanium",s:"Ge"},
+        33: {n:"Arsenic",s:"As"}, 34: {n:"Selenium",s:"Se"}, 35: {n:"Bromine",s:"Br"}, 36: {n:"Krypton",s:"Kr"},
+        37: {n:"Rubidium",s:"Rb"}, 38: {n:"Strontium",s:"Sr"}, 39: {n:"Yttrium",s:"Y"}, 40: {n:"Zirconium",s:"Zr"},
+        41: {n:"Niobium",s:"Nb"}, 42: {n:"Molybdenum",s:"Mo"}, 43: {n:"Technetium",s:"Tc"}, 44: {n:"Ruthenium",s:"Ru"},
+        45: {n:"Rhodium",s:"Rh"}, 46: {n:"Palladium",s:"Pd"}, 47: {n:"Silver",s:"Ag"}, 48: {n:"Cadmium",s:"Cd"},
+        49: {n:"Indium",s:"In"}, 50: {n:"Tin",s:"Sn"}, 51: {n:"Antimony",s:"Sb"}, 52: {n:"Tellurium",s:"Te"},
+        53: {n:"Iodine",s:"I"}, 54: {n:"Xenon",s:"Xe"}, 55: {n:"Cesium",s:"Cs"}, 56: {n:"Barium",s:"Ba"},
+        57: {n:"Lanthanum",s:"La"}, 58: {n:"Cerium",s:"Ce"}, 59: {n:"Praseodymium",s:"Pr"}, 60: {n:"Neodymium",s:"Nd"},
+        61: {n:"Promethium",s:"Pm"}, 62: {n:"Samarium",s:"Sm"}, 63: {n:"Europium",s:"Eu"}, 64: {n:"Gadolinium",s:"Gd"},
+        65: {n:"Terbium",s:"Tb"}, 66: {n:"Dysprosium",s:"Dy"}, 67: {n:"Holmium",s:"Ho"}, 68: {n:"Erbium",s:"Er"},
+        69: {n:"Thulium",s:"Tm"}, 70: {n:"Ytterbium",s:"Yb"}, 71: {n:"Lutetium",s:"Lu"}, 72: {n:"Hafnium",s:"Hf"},
+        73: {n:"Tantalum",s:"Ta"}, 74: {n:"Tungsten",s:"W"}, 75: {n:"Rhenium",s:"Re"}, 76: {n:"Osmium",s:"Os"},
+        77: {n:"Iridium",s:"Ir"}, 78: {n:"Platinum",s:"Pt"}, 79: {n:"Gold",s:"Au"}, 80: {n:"Mercury",s:"Hg"},
+        81: {n:"Thallium",s:"Tl"}, 82: {n:"Lead",s:"Pb"}, 83: {n:"Bismuth",s:"Bi"}, 84: {n:"Polonium",s:"Po"},
+        85: {n:"Astatine",s:"At"}, 86: {n:"Radon",s:"Rn"}, 87: {n:"Francium",s:"Fr"}, 88: {n:"Radium",s:"Ra"},
+        89: {n:"Actinium",s:"Ac"}, 90: {n:"Thorium",s:"Th"}, 91: {n:"Protactinium",s:"Pa"}, 92: {n:"Uranium",s:"U"},
+        93: {n:"Neptunium",s:"Np"}, 94: {n:"Plutonium",s:"Pu"}, 95: {n:"Americium",s:"Am"}, 96: {n:"Curium",s:"Cm"},
+        97: {n:"Berkelium",s:"Bk"}, 98: {n:"Californium",s:"Cf"}, 99: {n:"Einsteinium",s:"Es"}, 100: {n:"Fermium",s:"Fm"},
+        101: {n:"Mendelevium",s:"Md"}, 102: {n:"Nobelium",s:"No"}, 103: {n:"Lawrencium",s:"Lr"}, 104: {n:"Rutherfordium",s:"Rf"},
+        105: {n:"Dubnium",s:"Db"}, 106: {n:"Seaborgium",s:"Sg"}, 107: {n:"Bohrium",s:"Bh"}, 108: {n:"Hassium",s:"Hs"},
+        109: {n:"Meitnerium",s:"Mt"}, 110: {n:"Darmstadtium",s:"Ds"}, 111: {n:"Roentgenium",s:"Rg"}, 112: {n:"Copernicium",s:"Cn"},
+        113: {n:"Nihonium",s:"Nh"}, 114: {n:"Flerovium",s:"Fl"}, 115: {n:"Moscovium",s:"Mc"}, 116: {n:"Livermorium",s:"Lv"},
+        117: {n:"Tennessine",s:"Ts"}, 118: {n:"Oganesson",s:"Og"}
+    };
+
+    // --- STATE ---
+    let atomCount = 0;
+    let atomicNumber = 0;
+    let elementData = {};
+    let totalElectrons = 0;
+    let atomPositions = [];
+
+    // --- DOM ---
+    const screens = { setup: document.getElementById('setupScreen'), game: document.getElementById('gameScreen') };
+    const ui = {
+        cInput: document.getElementById('atomCountInput'),
+        aInput: document.getElementById('atomicNumInput'),
+        preview: document.getElementById('elementPreview'),
+        box: document.getElementById('animBox'),
+        status: document.getElementById('statusText'),
+        math: document.getElementById('mathDisplay'),
+        actionBtn: document.getElementById('actionBtn')
+    };
+
+    // --- SETUP LOGIC ---
+    function updatePreview() {
+        let val = parseInt(ui.aInput.value);
+        let count = parseInt(ui.cInput.value) || 1;
+        if(!val) return;
+        
+        // Strict cap at 118
+        if(val > 118) { val = 118; ui.aInput.value = 118; }
+        if(val < 1) { val = 1; ui.aInput.value = 1; }
+        
+        const el = PERIODIC_TABLE[val];
+        if(el) {
+            ui.preview.innerText = `Target: ${count} ${el.n} Atoms (${count} x ${val})`;
+        } else {
+            ui.preview.innerText = `Target: Unknown`;
+        }
+    }
+
+    function startLab() {
+        atomCount = parseInt(ui.cInput.value) || 1;
+        atomicNumber = parseInt(ui.aInput.value) || 1;
+        
+        // Cap visual limits
+        if(atomCount > 15) atomCount = 15; 
+        if(atomicNumber > 118) atomicNumber = 118;
+        
+        elementData = PERIODIC_TABLE[atomicNumber];
+        
+        // Switch screens FIRST to ensure box has dimensions
+        screens.setup.classList.remove('active');
+        screens.game.classList.add('active');
+        
+        // Delay setup slightly to allow layout paint
+        setTimeout(setupBoard, 20);
+    }
+
+    function goHome() {
+        screens.game.classList.remove('active');
+        screens.setup.classList.add('active');
+        // Clean up
+        ui.box.innerHTML = '';
+    }
+
+    // --- GAMEBOARD SETUP ---
+    function setupBoard() {
+        ui.box.innerHTML = ''; // Clear
+        // Stars
+        for(let s=0; s<40; s++) {
+            let star = document.createElement('div');
+            star.className = 'star';
+            star.style.width = Math.random() * 2 + 'px';
+            star.style.height = star.style.width;
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            ui.box.appendChild(star);
+        }
+
+        ui.status.innerText = "System Ready";
+        ui.math.innerHTML = `${atomCount} Atoms &times; ${atomicNumber} e<sup>-</sup> = <span style="color:#666">?</span>`;
+        ui.actionBtn.disabled = false;
+        ui.actionBtn.innerText = "START ASSEMBLY";
+        
+        atomPositions = [];
+        totalElectrons = 0;
+
+        // Calculate Grid
+        let cols = 4;
+        if(atomCount <= 3) cols = 3;
+        if(atomCount > 8) cols = 5;
+        
+        let rows = Math.ceil(atomCount / cols);
+        
+        let boxW = ui.box.offsetWidth || 900;
+        let boxH = ui.box.offsetHeight || 420;
+        
+        let spacingX = 200;
+        let spacingY = 130;
+        let startX = (boxW - ((cols-1)*spacingX)) / 2;
+        let startY = (boxH - ((rows-1)*spacingY)) / 2;
+
+        // Create Empty Nuclei
+        for(let i=0; i<atomCount; i++) {
+            let r = Math.floor(i / cols);
+            let c = i % cols;
+            
+            let cx = startX + (c * spacingX);
+            let cy = startY + (r * spacingY);
+            
+            atomPositions.push({x: cx, y: cy});
+
+            let nuc = document.createElement('div');
+            nuc.className = 'nucleus';
+            nuc.innerText = elementData.s;
+            nuc.style.left = cx + 'px';
+            nuc.style.top = cy + 'px';
+            ui.box.appendChild(nuc);
+            
+            let lbl = document.createElement('div');
+            lbl.className = 'atom-label';
+            lbl.innerText = (i+1);
+            lbl.style.left = cx + 'px';
+            lbl.style.top = (cy + 40) + 'px';
+            ui.box.appendChild(lbl);
+        }
+    }
+
+    function runMultiplication() {
+        ui.actionBtn.disabled = true;
+        
+        // Loop through each atom and fill it
+        atomPositions.forEach((pos, index) => {
+            
+            setTimeout(() => {
+                ui.status.innerText = `Assembling Atom ${index + 1}...`;
+                
+                // Add electrons
+                for(let e=0; e<atomicNumber; e++) {
+                    let electron = document.createElement('div');
+                    electron.className = 'electron';
+                    
+                    // Circular Layout Logic
+                    let angle = (e * (360/atomicNumber)) - 90;
+                    let rad = angle * (Math.PI/180);
+                    
+                    // Adaptive Radius/Size for high atomic numbers
+                    let dist = 40; 
+                    let scale = 1;
+                    
+                    if(atomicNumber > 30) { dist = 50; scale = 0.8; }
+                    if(atomicNumber > 60) { dist = 55; scale = 0.6; }
+                    if(atomicNumber > 90) { dist = 60; scale = 0.5; }
+                    
+                    let targetX = Math.cos(rad) * dist;
+                    let targetY = Math.sin(rad) * dist;
+                    
+                    // Place at center first
+                    electron.style.left = pos.x + 'px';
+                    electron.style.top = pos.y + 'px';
+                    
+                    ui.box.appendChild(electron);
+                    
+                    // Animate out
+                    setTimeout(() => {
+                        electron.style.transform = `translate(calc(-50% + ${targetX}px), calc(-50% + ${targetY}px)) scale(${scale})`;
+                    }, e * (500/atomicNumber)); // Speed up for large atoms so it doesn't take forever
+                }
+                
+                // Update Math
+                totalElectrons += atomicNumber;
+                
+                let equationStep = Array(index + 1).fill(atomicNumber).join(" + ");
+                ui.math.innerHTML = `${atomCount} &times; ${atomicNumber} = <span style="color:#f1c40f">${totalElectrons}</span>`;
+                
+                // Check if done
+                if(index === atomCount - 1) {
+                     setTimeout(() => {
+                         ui.status.innerText = "Assembly Complete.";
+                         ui.math.innerHTML = `${atomCount} &times; ${atomicNumber} = <span style="color:#00f3ff; font-size:36px">${totalElectrons}</span>`;
+                     }, 1000);
+                }
+                
+            }, index * 1000); 
+        });
+    }
+    
+    // Init Preview
+    updatePreview();
+    // Bind listeners
+    ui.cInput.addEventListener('input', updatePreview);
+
+</script>
+
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dismantle Division</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="../assets/css/arcade.css">
+<style>
+  /* --- GLOBAL STYLES --- */
+  body {
+      margin: 0; padding: 0; background: #050510; color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      min-height: 100vh;
+      overflow: hidden; user-select: none;
+  }
+
+  button {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: bold;
+      cursor: pointer; transition: all 0.2s; border: none; outline: none;
+  }
+  button:active { transform: scale(0.98); }
+
+  /* --- SCREENS --- */
+  .screen {
+      width: 1000px; max-width: 95%; height: 600px;
+      background: #0a0a15; border: 2px solid #333; border-radius: 12px;
+      box-shadow: 0 0 50px rgba(0,0,0,0.5);
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+  }
+  .screen.active { display: flex; }
+
+  /* --- MENU SCREEN --- */
+  h1 {
+      color: #64ffda; text-shadow: 0 0 10px rgba(100,255,218,0.3);
+      margin-bottom: 40px; font-size: 40px; text-transform: uppercase; letter-spacing: 2px;
+  }
+  .grid-menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 80%; }
+  .menu-btn {
+      padding: 20px; font-size: 18px; background: #1a1a2e; color: #fff;
+      border: 2px solid #333; border-radius: 12px;
+      display: flex; flex-direction: column; align-items: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .menu-btn:hover {
+      border-color: #64ffda; background: #222;
+      box-shadow: 0 0 15px rgba(100,255,218,0.2);
+      transform: translateY(-3px);
+  }
+  .menu-icon { font-size: 50px; margin-bottom: 10px; }
+
+  /* --- SETUP SCREEN --- */
+  .input-group { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+  input[type="number"] {
+      padding: 15px; font-size: 30px; width: 150px; text-align: center;
+      background: #000; color: #64ffda; border: 2px solid #333; border-radius: 8px; font-weight: bold;
+  }
+  input:focus { border-color: #64ffda; outline: none; }
+
+  .start-btn {
+      padding: 15px 50px; font-size: 24px; background: #27ae60; color: white;
+      border-radius: 8px; margin-top: 20px; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+  }
+  .start-btn:hover { background: #2ecc71; transform: scale(1.05); }
+
+  .back-btn {
+      padding: 10px 20px; background: #333; color: #aaa; border-radius: 5px; font-size: 14px;
+  }
+  .back-btn:hover { background: #444; color: white; }
+
+  .back-btn-abs {
+      position: absolute; top: 20px; left: 20px; z-index: 100;
+  }
+
+  /* --- GAME SCREEN HEADER --- */
+  .topbar {
+      width: 90%;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-top: 10px;
+      margin-bottom: 8px;
+  }
+  .topbar-text { flex: 1; min-width: 0; }
+  .question-text {
+      font-size: 18px;
+      color: #ddd;
+      line-height: 1.25;
+      margin-bottom: 6px;
+  }
+  .status-line {
+      font-size: 16px;
+      color: #8feee0;
+      line-height: 1.2;
+  }
+
+  /* --- GAME SCREEN --- */
+  .anim-box {
+      width: 90%; height: 420px; border: 2px solid #333;
+      background: radial-gradient(circle at center, #16213e 0%, #000 100%);
+      position: relative; border-radius: 8px; overflow: hidden;
+      display: flex;
+  }
+
+  .lane-area {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+  }
+
+  .lane-label {
+      position: absolute; left: 18px; top: 18px;
+      color: #555; font-size: 13px; font-weight: bold;
+      text-transform: uppercase; letter-spacing: 1px;
+  }
+
+  .more-label {
+      position: absolute; left: 18px; bottom: 18px;
+      color: #666; font-size: 13px; font-weight: bold;
+  }
+
+  .side-panel {
+      width: 360px;
+      border-left: 2px solid #333;
+      padding: 14px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+  }
+
+  .box {
+      border: 2px dashed #444;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.25);
+      position: relative;
+  }
+
+  .box-title {
+      position: absolute; top: -16px; left: 12px;
+      padding: 2px 10px;
+      background: #000; border-radius: 6px;
+      border: 1px solid #444;
+      color: #777; font-size: 12px; font-weight: bold;
+      text-transform: uppercase; letter-spacing: 1px;
+  }
+
+  /* --- STORAGE: make it look like a simple building --- */
+  .storage-box {
+      height: 82px;
+      border: 2px solid currentColor;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.28));
+      color: #444;
+  }
+  .storage-box::before {
+      content: '';
+      position: absolute;
+      left: 10px; right: 10px;
+      top: -14px;
+      height: 18px;
+      background: rgba(255,255,255,0.04);
+      border: 2px solid currentColor;
+      border-bottom: none;
+      border-radius: 10px 10px 0 0;
+      pointer-events: none;
+  }
+  .storage-door {
+      position: absolute;
+      left: 18px; bottom: 10px;
+      width: 44px; height: 52px;
+      background: rgba(0,0,0,0.35);
+      border-radius: 4px;
+      box-shadow:
+          inset 0 0 0 1px currentColor,
+          inset 0 0 0 3px rgba(0,0,0,0.18);
+      pointer-events: none;
+  }
+  .storage-door::after {
+      content: '';
+      position: absolute;
+      right: 8px; top: 26px;
+      width: 6px; height: 6px;
+      background: rgba(255,255,255,0.55);
+      border-radius: 50%;
+  }
+  .storage-window {
+      position: absolute;
+      left: 78px; top: 18px;
+      width: 44px; height: 22px;
+      background: rgba(0,0,0,0.22);
+      border-radius: 4px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+      pointer-events: none;
+  }
+
+  .storage-parts {
+      position: absolute;
+      left: 72px; right: 12px;
+      bottom: 12px;
+      top: auto;
+      height: 44px;
+      display: flex; gap: 8px;
+      flex-wrap: nowrap;
+      align-items: flex-end;
+      justify-content: flex-start;
+      pointer-events: none;
+  }
+
+  .pile-box {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+  }
+
+  .pile-rows {
+      flex: 1;
+      padding: 22px 12px 10px 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+  }
+
+  .pile-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 30px;
+  }
+
+  .pile-term {
+      width: 50px;
+      text-align: right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 20px;
+      color: #f1c40f;
+      flex: 0 0 auto;
+  }
+  .pile-term.remainder { color: #e74c3c; }
+
+  .pile-slot {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      flex-wrap: nowrap;
+  }
+
+  .pile-sum {
+      border-top: 1px solid #333;
+      padding: 8px 12px 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+  }
+  .total-value {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 20px;
+      color: #64ffda;
+  }
+
+  .pile-footer {
+      padding: 0 12px 12px 12px;
+      color: #777;
+      font-size: 13px;
+      line-height: 1.2;
+      min-height: 18px;
+  }
+
+  /* --- PARTS (TIRES / WHEELS) --- */
+  .part {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: #222;
+      border: 3px solid #ddd;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+  }
+  .part::after {
+      content: '';
+      width: 6px; height: 6px;
+      background: #ddd;
+      border-radius: 50%;
+      display: block;
+  }
+  /* Remainder wheels/tires are red (Division Factory style) */
+  .part.remainder { background: #e74c3c; }
+
+  /* --- VEHICLES --- */
+  .vehicle {
+      position: absolute;
+      width: 240px;
+      height: 130px;
+      pointer-events: none;
+      transition: left 0.85s cubic-bezier(0.25, 1, 0.5, 1);
+      transform: translate(-50%, -50%) scale(0.82);
+  }
+
+  .vehicle-body {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      box-sizing: border-box;
+      z-index: 30;
+  }
+
+  .car-body-shape {
+      width: 100px; height: 60px;
+      background: #3498db;
+      border: 2px solid #fff;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  }
+
+  .bike-body-shape {
+      width: 80px; height: 12px;
+      background: #e74c3c;
+      border-radius: 6px;
+      border: 1px solid #fff;
+  }
+
+  .bus-body-shape {
+      width: 150px; height: 60px;
+      background: #f1c40f;
+      border: 2px solid #fff;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  }
+
+  .vehicle .part {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      z-index: 20;
+  }
+
+  .vehicle.dismantled .vehicle-body {
+      filter: grayscale(1);
+      opacity: 0.55;
+  }
+
+  /* Controls */
+  .action-btn {
+      margin-top: 14px;
+      padding: 12px 40px;
+      font-size: 20px;
+      background: rgba(100,255,218,0.1);
+      color: #64ffda;
+      border: 1px solid #64ffda;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(100,255,218,0.2);
+  }
+  .action-btn:hover { background: #64ffda; color: #000; transform: scale(1.05); }
+  .action-btn:disabled {
+      border-color: #555; color: #555; background: transparent; cursor: default;
+      box-shadow: none; transform: none;
+  }
+
+  .result-text {
+      width: 90%;
+      min-height: 26px;
+      margin-top: 10px;
+      color: #ccc;
+      font-size: 15px;
+      line-height: 1.2;
+  }
+</style>
+</head>
+<body data-arcade-page="game">
+
+<div id="menuScreen" class="screen active">
+  <h1>DISMANTLE DIVISION</h1>
+  <div class="grid-menu">
+      <button class="menu-btn" onclick="selectTheme('bike')"><span class="menu-icon">🚲</span>BIKES (2 wheels each)</button>
+      <button class="menu-btn" onclick="selectTheme('car')"><span class="menu-icon">🚗</span>CARS (4 tires each)</button>
+      <button class="menu-btn" onclick="selectTheme('bus')"><span class="menu-icon">🚌</span>BUSES (8 tires each)</button>
+  </div>
+</div>
+
+<div id="setupScreen" class="screen">
+  <button class="back-btn back-btn-abs" onclick="goHome()">Back</button>
+  <h2 id="setupTitle" style="color: #ccc; margin-bottom: 30px; font-size: 28px;">How many tires do you need?</h2>
+  <div class="input-group">
+      <input type="number" id="itemInput" min="1" max="60" value="10">
+      <div style="color: #666; font-size: 14px;">(Max 60)</div>
+      <button class="start-btn" onclick="startGame()">START</button>
+  </div>
+</div>
+
+<div id="gameScreen" class="screen">
+  <div class="topbar">
+      <button class="back-btn" onclick="goHome()">Exit</button>
+      <div class="topbar-text">
+          <div class="question-text" id="questionText"></div>
+          <div class="status-line" id="statusText"></div>
+      </div>
+  </div>
+
+  <div class="anim-box" id="animBox">
+      <div class="lane-area" id="laneArea">
+          <div class="lane-label">DISMANTLE LINE</div>
+          <div class="more-label" id="moreLabel"></div>
+      </div>
+
+      <div class="side-panel">
+          <div class="box storage-box" id="storageBox">
+              <div class="box-title">STORAGE</div>
+              <div class="storage-door" aria-hidden="true"></div>
+              <div class="storage-window" aria-hidden="true"></div>
+              <div class="storage-parts" id="storageParts"></div>
+          </div>
+
+          <div class="box pile-box" id="pileBox">
+              <div class="box-title">PILE</div>
+              <div class="pile-rows" id="pileRows"></div>
+
+              <div class="pile-sum">
+                  <div class="pile-term">=</div>
+                  <div class="total-value" id="totalValue">0</div>
+              </div>
+
+              <div class="pile-footer" id="pileFooter"></div>
+          </div>
+      </div>
+  </div>
+
+  <div class="result-text" id="resultText"></div>
+
+  <button id="actionBtn" class="action-btn" onclick="handleAction()">DISMANTLE NEXT</button>
+</div>
+
+<script>
+  const THEMES = {
+      bike: { key: "bike", name: "Bike", divisor: 2, part: "Wheel", bodyClass: "bike-body-shape", color: "#e74c3c" },
+      car:  { key: "car",  name: "Car",  divisor: 4, part: "Tire",  bodyClass: "car-body-shape",  color: "#3498db" },
+      bus:  { key: "bus",  name: "Bus",  divisor: 8, part: "Tire",  bodyClass: "bus-body-shape",  color: "#f1c40f" }
+  };
+
+  const MAX_VISUAL_VEHICLES = 10; // 2 columns × 5 rows in the lane
+
+  // --- STATE ---
+  let currentThemeKey = "car";
+  let config = THEMES[currentThemeKey];
+
+  let targetParts = 0;
+  let fullCount = 0;
+  let remainder = 0;
+
+  let collected = 0;
+  let vehicleStepIndex = 0; // how many complete vehicles dismantled so far
+  let stage = "vehicle"; // "vehicle" -> "storage" -> "done"
+
+  const screens = {
+      menu: document.getElementById("menuScreen"),
+      setup: document.getElementById("setupScreen"),
+      game: document.getElementById("gameScreen")
+  };
+
+  const ui = {
+      setupTitle: document.getElementById("setupTitle"),
+      input: document.getElementById("itemInput"),
+      question: document.getElementById("questionText"),
+      status: document.getElementById("statusText"),
+      result: document.getElementById("resultText"),
+      actionBtn: document.getElementById("actionBtn"),
+
+      lane: document.getElementById("laneArea"),
+      moreLabel: document.getElementById("moreLabel"),
+
+      storageBox: document.getElementById("storageBox"),
+      storageParts: document.getElementById("storageParts"),
+
+      pileBox: document.getElementById("pileBox"),
+      pileRows: document.getElementById("pileRows"),
+      totalValue: document.getElementById("totalValue"),
+      pileFooter: document.getElementById("pileFooter")
+  };
+
+  function showScreen(name) {
+      Object.values(screens).forEach(s => s.classList.remove("active"));
+      screens[name].classList.add("active");
+  }
+
+  function goHome() {
+      showScreen("menu");
+      cleanupGameVisuals();
+  }
+
+  function selectTheme(key) {
+      currentThemeKey = key;
+      config = THEMES[key];
+
+      const partLower = pluralizeWord(config.part.toLowerCase());
+      ui.setupTitle.innerText = `How many ${partLower} do you need?`;
+
+      // default
+      ui.input.value = (config.divisor * 2) + Math.floor(config.divisor/2);
+
+      showScreen("setup");
+  }
+
+  function startGame() {
+      let val = parseInt(ui.input.value);
+      if(!val || val < 1) val = 1;
+      if(val > 60) val = 60;
+
+      targetParts = val;
+
+      setupGameBoard();
+      showScreen("game");
+  }
+
+  // --- TEXT HELPERS ---
+  function pluralizeWord(word) {
+      if(!word) return word;
+      const w = word.toLowerCase();
+      if(w.endsWith("s") || w.endsWith("x") || w.endsWith("z") || w.endsWith("ch") || w.endsWith("sh")) return word + "es";
+      return word + "s";
+  }
+  function wordForCount(n, singularWord) {
+      return (n === 1) ? singularWord : pluralizeWord(singularWord);
+  }
+
+  function getQuestionText() {
+      const partLower = config.part.toLowerCase();
+      const partPhrase = `${targetParts} ${wordForCount(targetParts, partLower)}`;
+      const objLower = config.name.toLowerCase();
+      const objPlural = pluralizeWord(objLower);
+      const partPlural = pluralizeWord(partLower);
+
+      return `You need ${partPhrase}. Each ${objLower} has ${config.divisor} ${partPlural}. How many complete ${objPlural} do you dismantle? After that, how many extra ${partPlural} (the leftover) do you take from storage?`;
+  }
+
+  function wait(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+  // --- GAME SETUP / CLEANUP ---
+  function cleanupGameVisuals() {
+      ui.lane.querySelectorAll(".vehicle, .temp-part").forEach(e => e.remove());
+      ui.pileRows.innerHTML = "";
+      ui.storageParts.innerHTML = "";
+      ui.moreLabel.innerText = "";
+      ui.pileFooter.innerText = "";
+      ui.result.innerText = "";
+  }
+
+  function setupGameBoard() {
+      cleanupGameVisuals();
+
+      collected = 0;
+      vehicleStepIndex = 0;
+
+      fullCount = Math.floor(targetParts / config.divisor);
+      remainder = targetParts - (fullCount * config.divisor);
+
+      stage = (fullCount > 0) ? "vehicle" : (remainder > 0 ? "storage" : "done");
+
+      ui.question.innerText = getQuestionText();
+      ui.result.innerText = "";
+
+      // Theme accent color
+      ui.actionBtn.style.borderColor = config.color;
+      ui.actionBtn.style.color = config.color;
+
+      ui.storageBox.style.color = config.color;
+      ui.pileBox.style.borderColor = config.color;
+
+      updateTotalDisplay();
+
+      if(stage === "vehicle") {
+          ui.status.innerText = `Target: ${targetParts} ${pluralizeWord(config.part.toLowerCase())}. Dismantle the first ${config.name.toLowerCase()}.`;
+          ui.actionBtn.innerText = `DISMANTLE NEXT ${config.name.toUpperCase()}`;
+          ui.actionBtn.disabled = false;
+          ui.actionBtn.style.display = "inline-block";
+      } else if(stage === "storage") {
+          ui.status.innerText = `Target: ${targetParts} ${pluralizeWord(config.part.toLowerCase())}. Take the leftover from storage.`;
+          ui.actionBtn.innerText = "TAKE FROM STORAGE";
+          ui.actionBtn.disabled = false;
+          ui.actionBtn.style.display = "inline-block";
+      } else {
+          ui.status.innerText = "Done.";
+          ui.actionBtn.style.display = "none";
+      }
+  }
+
+  function updateTotalDisplay() {
+      ui.totalValue.innerText = collected;
+  }
+
+  // --- PILE ROWS ---
+  function createPileRow(term, isRemainder) {
+      const rowCount = ui.pileRows.children.length;
+      const needsPlus = rowCount > 0;
+      const labelText = (needsPlus ? "+" : "") + term;
+
+      const row = document.createElement("div");
+      row.className = "pile-row";
+
+      const label = document.createElement("div");
+      label.className = "pile-term";
+      if(isRemainder) label.classList.add("remainder");
+      label.innerText = labelText;
+
+      const slot = document.createElement("div");
+      slot.className = "pile-slot";
+
+      row.appendChild(label);
+      row.appendChild(slot);
+
+      ui.pileRows.appendChild(row);
+
+      ui.pileRows.scrollTop = ui.pileRows.scrollHeight;
+
+      return {row, slot, label};
+  }
+
+  // --- PART TRANSFER (FLIP STYLE) ---
+  function movePartToSlot(partEl, slotEl) {
+      return new Promise(resolve => {
+          const src = partEl.getBoundingClientRect();
+
+          slotEl.appendChild(partEl);
+
+          partEl.classList.remove("temp-part");
+          partEl.style.left = "";
+          partEl.style.top = "";
+          partEl.style.position = "relative";
+          partEl.style.transform = "none";
+
+          const tgt = partEl.getBoundingClientRect();
+          const dx = src.left - tgt.left;
+          const dy = src.top - tgt.top;
+
+          partEl.style.transition = "none";
+          partEl.style.transform = `translate(${dx}px, ${dy}px)`;
+
+          partEl.getBoundingClientRect();
+
+          partEl.style.transition = "transform 0.75s cubic-bezier(0.25, 1, 0.5, 1)";
+          partEl.style.transform = "translate(0px, 0px)";
+
+          setTimeout(() => {
+              partEl.style.transition = "";
+              resolve();
+          }, 780);
+      });
+  }
+
+  // --- VEHICLE CREATION ---
+  function getVehicleSlot(index) {
+      const col = index % 2;
+      const row = Math.floor(index / 2);
+
+      const laneW = ui.lane.clientWidth;
+
+      const rightX = laneW - 190;
+      const x = rightX - col * 220;
+
+      const y = 70 + row * 80;
+
+      return {x, y};
+  }
+
+  function getWheelOffsetsFor(themeKey, wheelIndex) {
+      if(themeKey === "car") {
+          const positions = [
+              {x: -25, y: -25},
+              {x:  25, y: -25},
+              {x: -25, y:  25},
+              {x:  25, y:  25}
+          ];
+          return positions[wheelIndex] || {x:0,y:0};
+      }
+
+      if(themeKey === "bike") {
+          const positions = [
+              {x: -35, y:  15},
+              {x:  35, y:  15}
+          ];
+          return positions[wheelIndex] || {x:0,y:0};
+      }
+
+      if(themeKey === "bus") {
+          const xVals = [-50, -17, 17, 50];
+          const x = xVals[wheelIndex % 4] || 0;
+          const y = (wheelIndex < 4) ? 28 : 44;
+          return {x:x, y:y};
+      }
+
+      return {x:0,y:0};
+  }
+
+  function createVehicleVisual(visualIndex) {
+      const vehicle = document.createElement("div");
+      vehicle.className = "vehicle";
+
+      vehicle.style.left = "-200px";
+      const slot = getVehicleSlot(visualIndex);
+      vehicle.style.top = slot.y + "px";
+
+      const body = document.createElement("div");
+      body.className = "vehicle-body " + config.bodyClass;
+      vehicle.appendChild(body);
+
+      const wheels = [];
+      for(let i=0; i<config.divisor; i++) {
+          const w = document.createElement("div");
+          w.className = "part";
+          const off = getWheelOffsetsFor(config.key, i);
+          w.style.left = `calc(50% + ${off.x}px)`;
+          w.style.top = `calc(50% + ${off.y}px)`;
+          vehicle.appendChild(w);
+          wheels.push(w);
+      }
+
+      ui.lane.appendChild(vehicle);
+
+      requestAnimationFrame(() => {
+          vehicle.style.left = slot.x + "px";
+      });
+
+      return {vehicle, wheels};
+  }
+
+  function createTemporaryParts(count) {
+      const parts = [];
+      for(let i=0; i<count; i++) {
+          const p = document.createElement("div");
+          p.className = "part temp-part";
+          p.style.position = "absolute";
+          p.style.left = (40 + i * 28) + "px";
+          p.style.top = "70px";
+          ui.lane.appendChild(p);
+          parts.push(p);
+      }
+      return parts;
+  }
+
+  function updateMoreLabel() {
+      const extra = vehicleStepIndex + 1 - MAX_VISUAL_VEHICLES;
+      if(extra > 0) {
+          const objPlural = pluralizeWord(config.name.toLowerCase());
+          ui.moreLabel.innerText = `(+ ${extra} more ${objPlural} not shown)`;
+      }
+  }
+
+  // --- GAME STEPS ---
+  async function handleAction() {
+      if(stage === "done") return;
+
+      ui.actionBtn.disabled = true;
+
+      if(stage === "vehicle") {
+          await runVehicleStep();
+      } else if(stage === "storage") {
+          await runStorageStep();
+      }
+
+      ui.actionBtn.disabled = false;
+  }
+
+  async function runVehicleStep() {
+      const term = config.divisor;
+
+      const {slot} = createPileRow(term, false);
+
+      let partsToMove = [];
+      if(vehicleStepIndex < MAX_VISUAL_VEHICLES) {
+          ui.status.innerText = `Dismantling ${config.name.toLowerCase()} ${vehicleStepIndex + 1}...`;
+          const {vehicle, wheels} = createVehicleVisual(vehicleStepIndex);
+
+          await wait(900);
+
+          partsToMove = wheels;
+          await Promise.all(partsToMove.map(w => movePartToSlot(w, slot)));
+
+          vehicle.classList.add("dismantled");
+      } else {
+          ui.status.innerText = `Dismantling another ${config.name.toLowerCase()}...`;
+          partsToMove = createTemporaryParts(term);
+          await wait(100);
+          await Promise.all(partsToMove.map(p => movePartToSlot(p, slot)));
+          updateMoreLabel();
+      }
+
+      collected += term;
+      updateTotalDisplay();
+
+      vehicleStepIndex++;
+
+      if(vehicleStepIndex >= fullCount) {
+          if(remainder > 0) {
+              stage = "storage";
+              ui.status.innerText = `Collected ${collected}. Now take the leftover from storage.`;
+              ui.actionBtn.innerText = "TAKE FROM STORAGE";
+          } else {
+              finishGame();
+          }
+      } else {
+          ui.status.innerText = `Collected ${collected} / ${targetParts}. Dismantle the next ${config.name.toLowerCase()}.`;
+      }
+
+      if(collected >= targetParts && stage !== "done") {
+          finishGame();
+      }
+  }
+
+  async function runStorageStep() {
+      const term = remainder;
+
+      ui.status.innerText = `Taking ${term} from storage...`;
+
+      const {slot} = createPileRow(term, true);
+
+      ui.storageParts.innerHTML = "";
+      const parts = [];
+      for(let i=0; i<term; i++) {
+          const p = document.createElement("div");
+          p.className = "part remainder";
+          ui.storageParts.appendChild(p);
+          parts.push(p);
+      }
+
+      await wait(120);
+      await Promise.all(parts.map(p => movePartToSlot(p, slot)));
+
+      collected += term;
+      updateTotalDisplay();
+
+      finishGame();
+  }
+
+  function finishGame() {
+      stage = "done";
+      ui.actionBtn.style.display = "none";
+
+      const partLower = config.part.toLowerCase();
+      const partPlural = pluralizeWord(partLower);
+      const objLower = config.name.toLowerCase();
+      const objPlural = pluralizeWord(objLower);
+
+      const divLine = `${targetParts} ÷ ${config.divisor} = ${fullCount} (rem ${remainder})`;
+      ui.pileFooter.innerText = divLine;
+
+      if(remainder === 0) {
+          ui.result.innerText = `Done: we dismantled ${fullCount} ${objPlural} completely and collected exactly ${targetParts} ${partPlural}.`;
+      } else if(fullCount === 0) {
+          ui.result.innerText = `Done: we took ${targetParts} ${partPlural} from storage. (Since one ${objLower} has ${config.divisor} ${partPlural}.)`;
+      } else {
+          ui.result.innerText = `Done: we dismantled ${fullCount} ${objPlural} completely (${fullCount} × ${config.divisor} = ${fullCount * config.divisor} ${partPlural}), then took the leftover ${remainder} ${partPlural} from storage.`;
+      }
+
+      ui.status.innerText = `Completed: ${targetParts} ${partPlural}.`;
+  }
+</script>
+
+<script src="../assets/js/app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,391 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Predecessor Choice</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<style>
+  body {
+      margin: 0; overflow: hidden; background: #050510; color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+
+  /* --- HUD --- */
+  #hud {
+      position: absolute; top: 0; left: 0; width: 100%; height: 80px;
+      background: rgba(20, 20, 30, 0.9); border-bottom: 2px solid #444;
+      display: flex; justify-content: center; align-items: center; gap: 60px;
+      padding: 0 20px; box-sizing: border-box; z-index: 10;
+  }
+  
+  .btn-exit {
+      position: absolute; left: 20px;
+      padding: 10px 20px; font-size: 16px; font-weight: bold;
+      background: #333; color: #aaa; border: 1px solid #555; border-radius: 6px;
+      cursor: pointer; text-transform: uppercase;
+  }
+  .btn-exit:hover { background: #c0392b; color: white; border-color: #e74c3c; }
+
+  .stat-box { text-align: center; }
+  .label { font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 2px; }
+  .value { font-size: 36px; font-weight: bold; color: #fff; }
+  
+  /* --- GAME AREA --- */
+  #gameCanvas { display: block; width: 100vw; height: 100vh; }
+
+  /* --- CONTROLS --- */
+  #controls {
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 140px;
+      display: flex; z-index: 15;
+  }
+  
+  .control-btn {
+      flex: 1; border: none; outline: none; cursor: pointer;
+      font-size: 32px; font-weight: bold; color: white;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      transition: all 0.1s; opacity: 0.9;
+      text-transform: uppercase;
+  }
+  
+  /* Left Button (Option A) */
+  #btnLeft {
+      background: linear-gradient(to top, #c0392b 0%, #e74c3c 100%);
+      border-top: 4px solid #c0392b;
+  }
+  #btnLeft:active, #btnLeft.active { background: #c0392b; transform: translateY(4px); }
+  
+  /* Right Button (Option B) */
+  #btnRight {
+      background: linear-gradient(to top, #2980b9 0%, #3498db 100%);
+      border-top: 4px solid #2980b9;
+  }
+  #btnRight:active, #btnRight.active { background: #2980b9; transform: translateY(4px); }
+
+  /* --- SCREENS --- */
+  #startScreen, #gameOverScreen {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(5, 5, 16, 0.98);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 20; text-align: center;
+  }
+  
+  h1 { font-size: 60px; color: #00f3ff; margin: 0 0 20px 0; text-shadow: 0 0 25px rgba(0, 243, 255, 0.6); letter-spacing: 3px; }
+  p { font-size: 24px; color: #ccc; max-width: 600px; line-height: 1.6; margin-bottom: 40px; }
+  
+  .lvl-input { 
+      width: 220px; padding: 10px 12px; font-size: 18px; font-weight: bold; 
+      background: #111; color: #fff; border: 1px solid #00f3ff; border-radius: 8px; 
+      outline: none; text-align: center; margin-bottom: 30px;
+  }
+
+  .level-container { display: flex; gap: 20px; }
+
+  .btn-level {
+      padding: 15px 30px; font-size: 20px; font-weight: bold; color: #050510;
+      border: none; border-radius: 8px; cursor: pointer;
+      transition: all 0.2s; text-transform: uppercase; width: 220px;
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+  }
+  
+  .lvl-1 { background: #2ecc71; box-shadow: 0 0 20px rgba(46, 204, 113, 0.4); }
+  .lvl-2 { background: #f1c40f; box-shadow: 0 0 20px rgba(241, 196, 15, 0.4); }
+  .lvl-3 { background: #e74c3c; box-shadow: 0 0 20px rgba(231, 76, 60, 0.4); }
+
+  .btn-level:hover { transform: scale(1.05); filter: brightness(1.2); }
+  
+  .rec-label { font-size: 12px; opacity: 0.9; color: #000; font-weight: normal; margin-top:4px; }
+  .rec-val { font-weight: bold; }
+  
+  .btn-reset {
+      margin-top: 40px; background: transparent; border: 1px solid #444;
+      color: #666; padding: 8px 16px; border-radius: 4px; cursor: pointer;
+      font-size: 12px; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s;
+  }
+  .btn-reset:hover { border-color: #c0392b; color: #c0392b; }
+
+  /* FEEDBACK OVERLAY */
+  .feedback-float {
+      position: absolute; font-weight: bold; font-size: 60px; 
+      pointer-events: none; animation: floatUp 0.6s forwards;
+      text-shadow: 4px 4px 0 #000; z-index: 50;
+  }
+  @keyframes floatUp { 0% { transform: translate(-50%, 0) scale(1); opacity: 1; } 100% { transform: translate(-50%, -80px) scale(1.2); opacity: 0; } }
+</style>
+
+  <meta name="theme-color" content="#0a1220">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
+  <link rel="icon" href="../assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/arcade.css">
+
+</head>
+<body class="arcade arcade-game arcade-canvas" data-arcade-page="game">
+
+<div id="hud">
+    <button class="btn-exit" onclick="exitGame()">Exit</button>
+    <div class="stat-box">
+        <div class="label">Score</div>
+        <div class="value" id="scoreVal">0</div>
+    </div>
+    <div class="stat-box">
+        <div class="label">Lives</div>
+        <div class="value" id="livesVal" style="color:#e74c3c">3</div>
+    </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="controls">
+    <button id="btnLeft" class="control-btn" onmousedown="handleInput('LEFT')" ontouchstart="handleInput('LEFT')">
+        <span id="txtLeft">?</span>
+    </button>
+    <button id="btnRight" class="control-btn" onmousedown="handleInput('RIGHT')" ontouchstart="handleInput('RIGHT')">
+        <span id="txtRight">?</span>
+    </button>
+</div>
+
+<div id="startScreen">
+    <h1>NUMBER BEFORE</h1>
+    <p>Identify the predecessor. Wrong answer = Life Lost.</p>
+    
+    <div style="margin-bottom: 20px; color:#888; font-size: 14px;">SELECT MISSION SPEED:</div>
+    
+    <div class="level-container">
+        <button class="btn-level lvl-1" onclick="startGame(1, 1.0)">
+            Level 1 (Slow)
+            <div class="rec-label">Rec: <span id="rec-1" class="rec-val">0</span> by <span id="name-1">---</span></div>
+        </button>
+        <button class="btn-level lvl-2" onclick="startGame(2, 2.5)">
+            Level 2 (Normal)
+            <div class="rec-label">Rec: <span id="rec-2" class="rec-val">0</span> by <span id="name-2">---</span></div>
+        </button>
+        <button class="btn-level lvl-3" onclick="startGame(3, 5.0)">
+            Level 3 (Fast)
+            <div class="rec-label">Rec: <span id="rec-3" class="rec-val">0</span> by <span id="name-3">---</span></div>
+        </button>
+    </div>
+    
+    <button class="btn-reset" onclick="resetRecords()">Reset All Records</button>
+</div>
+
+<div id="gameOverScreen" style="display:none">
+    <h1 style="color:#e74c3c">GAME OVER</h1>
+    <p>Final Score: <span id="finalScore" style="color:#fff; font-weight:bold; font-size:40px">0</span></p>
+    <div id="newRecordMsg" style="display:none; color:#f1c40f; font-size:24px; font-weight:bold; margin-bottom:20px; text-shadow:0 0 10px #f1c40f;">NEW RECORD!</div>
+    <button class="btn-level lvl-2" onclick="exitGame()">MENU</button>
+</div>
+
+<script>
+    // --- STATE ---
+    const RECORD_KEY = "predChoice_records_v1";
+    let canvas, ctx, width, height;
+    let activeNumber = null, particles = [], score = 0, lives = 3, currentSpeed = 2, currentLevelId = 1, currentPlayerName = "Player", isPlaying = false, animationId;
+    let loopToken = 0;
+    let lastTimestamp = 0;
+    let correctSide = "";
+
+    let records = { 1: { name: "None", score: 0 }, 2: { name: "None", score: 0 }, 3: { name: "None", score: 0 } };
+
+    function getProfileName() {
+        const p = window.MathArcadeProgress;
+        if (p && typeof p.getActiveUserName === "function") {
+            const n = (p.getActiveUserName() || "").trim();
+            if (n) return n;
+        }
+        return "";
+    }
+
+    function resolveCurrentPlayerName() {
+        return getProfileName() || "";
+    }
+
+    // --- SETUP ---
+    window.onload = () => {
+        canvas = document.getElementById('gameCanvas');
+        ctx = canvas.getContext('2d');
+        resize();
+        window.addEventListener('resize', resize);
+        loadRecords();
+        
+        document.addEventListener('keydown', (e) => {
+            if(!isPlaying) return;
+            if(e.key === 'ArrowLeft') { triggerButtonEffect('btnLeft'); handleInput('LEFT'); }
+            if(e.key === 'ArrowRight') { triggerButtonEffect('btnRight'); handleInput('RIGHT'); }
+        });
+    };
+
+    function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+
+    function triggerButtonEffect(id) {
+        const btn = document.getElementById(id);
+        btn.classList.add('active');
+        setTimeout(() => btn.classList.remove('active'), 150);
+    }
+
+    // --- RECORDS ---
+    function loadRecords() {
+        try {
+            const raw = localStorage.getItem(RECORD_KEY);
+            if(raw) {
+                const parsed = JSON.parse(raw);
+                if(parsed[1]) records[1] = parsed[1];
+                if(parsed[2]) records[2] = parsed[2];
+                if(parsed[3]) records[3] = parsed[3];
+            }
+        } catch(e) {}
+        updateRecordUI();
+    }
+    
+    function saveRecords() { try { localStorage.setItem(RECORD_KEY, JSON.stringify(records)); } catch(e){} }
+    
+    function resetRecords() {
+        if(confirm("Are you sure you want to delete all high scores?")) {
+            localStorage.removeItem(RECORD_KEY);
+            records = { 1: { name: "None", score: 0 }, 2: { name: "None", score: 0 }, 3: { name: "None", score: 0 } };
+            updateRecordUI();
+        }
+    }
+    
+    function updateRecordUI() {
+        for(let i=1; i<=3; i++) {
+            document.getElementById(`rec-${i}`).innerText = records[i].score;
+            document.getElementById(`name-${i}`).innerText = records[i].name;
+        }
+    }
+    
+    function checkHighScores() {
+        const currentRec = records[currentLevelId] || { name: "None", score: 0 };
+        const currentScore = Number.isFinite(currentRec.score) ? currentRec.score : 0;
+        const shouldInitialize = !currentRec.name || currentRec.name === "None";
+        if (score > currentScore || (score === currentScore && shouldInitialize)) {
+            records[currentLevelId] = { name: currentPlayerName, score: score };
+            saveRecords();
+            return true;
+        }
+        return false;
+    }
+
+    // --- GAME FLOW ---
+    function exitGame() {
+        if (isPlaying) checkHighScores();
+        isPlaying = false; activeNumber = null; particles = []; cancelAnimationFrame(animationId);
+        ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, width, height);
+        document.getElementById('gameOverScreen').style.display = 'none';
+        document.getElementById('startScreen').style.display = 'flex';
+        updateRecordUI();
+    }
+
+    function startGame(lvlId, speedVal) {
+        const playerName = resolveCurrentPlayerName();
+        if(!playerName) {
+            alert("No active player selected. Return to Adventure HQ and pick a player first.");
+            return;
+        }
+        currentPlayerName = playerName;
+
+        document.getElementById('startScreen').style.display = 'none';
+        document.getElementById('gameOverScreen').style.display = 'none';
+        document.getElementById('newRecordMsg').style.display = 'none';
+        score = 0; lives = 3; activeNumber = null; particles = []; currentLevelId = lvlId; currentSpeed = speedVal; isPlaying = true;
+        updateHUD(); spawnNumber(); loopToken++; lastTimestamp = 0; const token = loopToken; requestAnimationFrame((ts)=>animate(ts, token)); }
+
+    function gameOver() {
+        isPlaying = false; cancelAnimationFrame(animationId);
+        const isNewRecord = checkHighScores();
+        document.getElementById('gameOverScreen').style.display = 'flex';
+        document.getElementById('finalScore').innerText = score;
+        document.getElementById('newRecordMsg').style.display = isNewRecord ? 'block' : 'none';
+    }
+
+    // --- LOGIC ---
+    function spawnNumber() {
+        if(activeNumber !== null) return;
+        const val = Math.floor(Math.random() * 98) + 2; 
+        const correct = val - 1;
+        let dist = (Math.random() > 0.5) ? val + 1 : val - 2;
+        if(dist < 1) dist = val + 2;
+
+        if (Math.random() > 0.5) {
+            document.getElementById('txtLeft').innerText = correct;
+            document.getElementById('txtRight').innerText = dist;
+            correctSide = "LEFT";
+        } else {
+            document.getElementById('txtLeft').innerText = dist;
+            document.getElementById('txtRight').innerText = correct;
+            correctSide = "RIGHT";
+        }
+        activeNumber = { val: val, x: width / 2, y: -60, r: 50 };
+    }
+
+    function handleInput(side) {
+        if (!isPlaying || activeNumber === null) return;
+        if (side === correctSide) {
+            createExplosion(activeNumber.x, activeNumber.y, '#2ecc71');
+            createFeedback(activeNumber.x, activeNumber.y, "+10", "#fff");
+            score += 10; activeNumber = null;
+            setTimeout(() => { if(isPlaying) spawnNumber(); }, 300);
+        } else {
+            createExplosion(activeNumber.x, activeNumber.y, '#e74c3c');
+            createFeedback(width/2, height/2, "WRONG!", "#e74c3c");
+            lives--; activeNumber = null;
+            document.body.style.backgroundColor = "#500";
+            setTimeout(() => document.body.style.backgroundColor = "#050510", 100);
+            if (lives <= 0) gameOver(); else setTimeout(() => { if(isPlaying) spawnNumber(); }, 500);
+        }
+        updateHUD();
+    }
+
+    function updateHUD() {
+        document.getElementById('scoreVal').innerText = score;
+        document.getElementById('livesVal').innerText = lives;
+    }
+
+    // --- RENDER ---
+    function animate(timestamp, token) {
+        if(!isPlaying || token !== loopToken) return;
+        if(!lastTimestamp) lastTimestamp = timestamp;
+        const dt = Math.min((timestamp - lastTimestamp) / (1000/60), 3);
+        lastTimestamp = timestamp;
+        ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, width, height);
+        let floorY = height - 140;
+        ctx.beginPath(); ctx.moveTo(0, floorY); ctx.lineTo(width, floorY); ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.stroke();
+
+        if (activeNumber) {
+            let n = activeNumber; n.y += currentSpeed * dt;
+            // High contrast drawing: Solid Cyan circle, Solid Black text. No blurs.
+            ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+            ctx.fillStyle = '#00f3ff'; ctx.fill();
+            ctx.fillStyle = '#000'; ctx.font = 'bold 45px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(n.val, n.x, n.y);
+            if (n.y > floorY - n.r) {
+                lives--; updateHUD(); createExplosion(n.x, n.y, '#e74c3c'); activeNumber = null;
+                document.body.style.backgroundColor = "#500";
+                setTimeout(() => document.body.style.backgroundColor = "#050510", 100);
+                if (lives <= 0) gameOver(); else setTimeout(() => { if(isPlaying) spawnNumber(); }, 500);
+            }
+        }
+        updateParticles(dt);
+        animationId = requestAnimationFrame((ts)=>animate(ts, token));
+    }
+
+    function createExplosion(x, y, color) { for(let i=0; i<20; i++) particles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 15, vy: (Math.random() - 0.5) * 15, life: 1.0, color: color }); }
+    function createFeedback(x, y, text, color) {
+        const el = document.createElement('div'); el.className = 'feedback-float'; el.innerText = text; el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.color = color; document.body.appendChild(el); setTimeout(() => el.remove(), 600);
+    }
+    function updateParticles(dt) {
+        for(let i=particles.length-1; i>=0; i--) {
+            let p = particles[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= (0.04 * dt);
+            ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2); ctx.fill();
+            if(p.life <= 0) particles.splice(i, 1);
+        }
+        ctx.globalAlpha = 1.0;
+    }
+</script>
+
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

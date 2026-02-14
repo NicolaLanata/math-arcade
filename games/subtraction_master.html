@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Subtraction Master</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<style>
+  :root {
+      --bg-color: #0f0f1a;
+      --text-color: #fff;
+      --blue: #3498db; 
+      --red: #e74c3c;
+      --green: #2ecc71;
+      --yellow: #f1c40f;
+      --purple: #9b59b6;
+      --block-size: 24px;
+  }
+
+  body {
+      background: var(--bg-color); color: var(--text-color);
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      display: flex; flex-direction: column; align-items: center; 
+      margin: 0; min-height: 100vh; user-select: none;
+      overflow-x: hidden; overflow-y: hidden;
+  }
+
+  /* --- MENU SCREEN --- */
+  #menu-screen {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100vh; width: 100%; z-index: 100;
+  }
+  .menu-btn {
+      width: 320px; padding: 25px; margin: 10px;
+      font-size: 22px; font-weight: bold; border-radius: 15px;
+      border: none; cursor: pointer; color: #fff;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center;
+  }
+  .menu-btn span { font-size: 14px; font-weight: normal; opacity: 0.8; margin-top: 5px; }
+  .menu-btn:active { transform: scale(0.95); }
+  
+  .btn-lvl1 { background: linear-gradient(135deg, #3498db, #2980b9); box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4); }
+  .btn-lvl2 { background: linear-gradient(135deg, #e67e22, #d35400); box-shadow: 0 5px 15px rgba(230, 126, 34, 0.4); }
+  .btn-lvl3 { background: linear-gradient(135deg, #9b59b6, #8e44ad); box-shadow: 0 5px 15px rgba(155, 89, 182, 0.4); }
+
+  /* --- HEADER --- */
+  #header {
+      width: 100%; padding: 15px; background: #1a1a2e; border-bottom: 2px solid #333;
+      display: flex; justify-content: center; align-items: center; gap: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 50;
+  }
+  .num-input {
+      background: #000; border: 2px solid #555; color: #fff;
+      font-size: 28px; width: 70px; padding: 5px; text-align: center; border-radius: 8px;
+  }
+  
+  .action-btn {
+      border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;
+      color: #fff; transition: transform 0.1s;
+  }
+  .action-btn:active { transform: scale(0.95); }
+  .btn-new { background: var(--blue); }
+  .btn-home { background: #555; margin-right: auto; margin-left: 10px; font-size: 20px;}
+
+  /* --- WORKSPACE --- */
+  #workspace {
+      display: grid; 
+      grid-template-columns: 1fr 300px; 
+      gap: 20px; width: 95%; max-width: 1400px; 
+      flex-grow: 1; padding-top: 40px;
+  }
+  /* Workspace Mode for Levels 2 & 3 (No Visuals) */
+  #workspace.no-visuals {
+      display: flex; flex-direction: column; align-items: center;
+      grid-template-columns: none;
+  }
+
+  /* SHARED EQUATION STYLES */
+  .equation-area {
+      display: flex; flex-direction: column; align-items: center; position: relative; z-index: 10;
+      width: 100%;
+  }
+  .equation-chain {
+      display: flex; flex-direction: row; align-items: flex-start; justify-content: center;
+      gap: 20px; width: 100%; flex-wrap: wrap;
+      font-size: 60px; font-weight: bold; /* Slightly smaller to fit level 3 */
+      min-height: 250px;
+  }
+  .eq-part { display: flex; align-items: center; gap: 10px; opacity: 1; transition: opacity 0.5s; }
+  .hidden { opacity: 0; pointer-events: none; display: none !important; }
+
+  .number-box { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .blue-text { color: var(--blue); }
+  .red-text { color: var(--red); }
+  .green-text { color: var(--green); }
+  .purple-text { color: var(--purple); }
+  .op { color: #666; font-family: monospace; margin-top: -10px; }
+
+  /* LEVEL 1 SPLITTER BUBBLES */
+  .splitter-container {
+      position: absolute; top: 90px; left: 50%; transform: translateX(-50%);
+      width: 160px; height: 120px;
+  }
+  .leg-line {
+      position: absolute; top: -10px; width: 4px; height: 50px; background: #444;
+      transform-origin: top center;
+  }
+  .l-left { left: 50%; transform: rotate(35deg); }
+  .l-right { left: 50%; transform: rotate(-35deg); }
+
+  .split-bubble {
+      width: 55px; height: 55px; border-radius: 50%;
+      background: #222; border: 3px solid #555;
+      color: #fff; font-size: 30px; font-weight: bold;
+      display: flex; align-items: center; justify-content: center;
+      position: absolute; top: 40px; pointer-events: auto;
+      cursor: pointer; transition: all 0.2s;
+  }
+  .sb-left { left: 0; }
+  .sb-right { right: 0; }
+  .locked-bubble { border-color: #444; background: #1a1a1a; color: #888; cursor: default; }
+
+  /* STEPS TEXT */
+  .step-text { font-size: 30px; margin-top: 10px; color: #aaa; text-align: center; }
+  .mid-input {
+      min-width: 80px; height: 60px; font-size: 35px; text-align: center;
+      background: #222; border: 2px solid #555; color: white; border-radius: 10px;
+      display: inline-block; margin: 0 10px; padding: 0 10px;
+  }
+
+  /* VISUAL PANEL */
+  .visual-panel {
+      position: relative; border-left: 2px dashed #333;
+      display: flex; flex-direction: column; align-items: center; padding-top: 50px;
+  }
+  .visual-panel.hidden-panel { display: none; }
+  
+  .panel-label {
+      font-size: 14px; text-transform: uppercase; color: #666; letter-spacing: 2px;
+      margin-bottom: 20px;
+  }
+  .block-stage { position: relative; width: 200px; height: 400px; }
+  .block {
+      position: absolute; width: var(--block-size); height: var(--block-size);
+      background-color: var(--red); border-radius: 2px;
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.4);
+      transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  /* INPUT STATES */
+  .active-input {
+      border-color: var(--yellow); box-shadow: 0 0 20px rgba(241, 196, 15, 0.4);
+      background: #333; transform: scale(1.1); color: #fff !important;
+  }
+  .correct-input { 
+      border-color: var(--green); color: var(--green) !important; 
+      background: #1a1a1a; box-shadow: 0 0 15px rgba(46, 204, 113, 0.3);
+  }
+  .wrong-input { 
+      border-color: var(--red); color: var(--red) !important; animation: shake 0.3s; 
+  }
+
+  .final-box {
+      width: 110px; height: 80px; border: 3px solid #444; background: #111;
+      color: #fff; font-size: 45px; display: flex; align-items: center; justify-content: center;
+      border-radius: 12px; cursor: pointer; margin-top: -10px;
+  }
+
+  @keyframes shake {
+      0% { transform: translateX(0); } 25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); } 75% { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
+  }
+
+  /* KEYPAD & HINT */
+  #hintBar {
+      font-size: 24px; color: #888; margin-bottom: 20px; text-align: center; height: 40px; line-height: 40px; width: 100%;
+  }
+  #keypad {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+      width: 400px; padding-bottom: 30px; margin-top: auto;
+  }
+  .key {
+      background: #1f1f1f; border: 1px solid #333; color: #fff;
+      font-size: 24px; padding: 15px 0; border-radius: 8px; cursor: pointer;
+  }
+  .key:active { background: #333; transform: translateY(2px); }
+  .key-action { background: #2c2c2c; font-weight: bold; }
+
+  /* BALLOONS */
+  .balloon {
+      position: absolute; bottom: -100px; width: 40px; height: 50px;
+      border-radius: 50%; opacity: 0.9; animation: floatUp 4s ease-in infinite; z-index: 5;
+  }
+  .balloon::before {
+      content: ''; position: absolute; bottom: -10px; left: 18px;
+      width: 2px; height: 10px; background: rgba(255,255,255,0.5);
+  }
+  @keyframes floatUp {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(-120vh) rotate(20deg); opacity: 0; }
+  }
+</style>
+
+  <meta name="theme-color" content="#0a1220">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
+  <link rel="icon" href="../assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/arcade.css">
+
+</head>
+<body class="arcade arcade-game arcade-standard" data-arcade-page="game">
+
+<div id="celebration-area" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1;"></div>
+
+<div id="menu-screen">
+    <h1 style="color:white; font-size: 40px; margin-bottom: 30px;">Subtraction Master</h1>
+    <button class="menu-btn btn-lvl1" onclick="startLevel(1)">
+        Level 1
+        <span>Single Digit (Bridge 10)</span>
+    </button>
+    <button class="menu-btn btn-lvl2" onclick="startLevel(2)">
+        Level 2
+        <span>Two Digits (Tens First)</span>
+    </button>
+    <button class="menu-btn btn-lvl3" onclick="startLevel(3)">
+        Level 3
+        <span>Three Digits (Hundreds First)</span>
+    </button>
+</div>
+
+<div id="game-ui" style="display:none; width: 100%; flex-direction: column; align-items: center; min-height: 100vh;">
+    
+    <div id="header">
+        <button class="action-btn btn-home" onclick="goHome()">🏠</button>
+        <button class="action-btn btn-new" onclick="generateNewProblem()">New Problem</button>
+        
+        <div style="flex-grow:1; display: flex; justify-content: center; align-items: center; gap: 10px;">
+            <div style="font-size: 20px; color: #aaa;">Manual:</div>
+            <input type="number" id="inMin" class="num-input" value="52" oninput="initDrill()">
+            <span style="font-size: 24px">-</span>
+            <input type="number" id="inSub" class="num-input" value="8" oninput="initDrill()">
+        </div>
+        <div style="width: 50px;"></div>
+    </div>
+
+    <div id="workspace">
+        <div class="equation-area">
+            <div id="hintBar">Ready?</div>
+
+            <div id="level1-container" style="display:none; width: 100%; flex-direction: column; align-items: center;">
+                <div class="equation-chain">
+                    <div class="eq-part">
+                        <div class="number-box blue-text" id="l1-min">52</div>
+                        <div class="op">-</div>
+                        <div class="number-box red-text">
+                            <span id="l1-sub">8</span>
+                            <div class="splitter-container" id="l1-splitter">
+                                <div class="leg-line l-left"></div>
+                                <div class="leg-line l-right"></div>
+                                <div class="split-bubble sb-left locked-bubble" id="l1-bub1">?</div>
+                                <div class="split-bubble sb-right" id="l1-bub2" onclick="setFocus('l1-bub2')">?</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="eq-part hidden" id="l1-finalPart">
+                        <div class="op">=</div>
+                        <div class="final-box" id="l1-finalAns" onclick="setFocus('l1-finalAns')">?</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="level2-container" style="display:none; width: 100%; flex-direction: column; align-items: center;">
+                <div class="equation-chain">
+                    <div class="eq-part">
+                        <div class="number-box blue-text" id="l2-min">46</div>
+                        <div class="op">-</div>
+                        <div class="number-box red-text" id="l2-sub">22</div>
+                    </div>
+                    
+                    <div class="eq-part" id="l2-step1">
+                        <div class="step-text">
+                            First: <span id="l2-txt-min" class="blue-text">46</span> - <span id="l2-txt-tens" class="red-text">20</span> = 
+                            <div class="mid-input" id="l2-mid-ans" onclick="setFocus('l2-mid-ans')">?</div>
+                        </div>
+                    </div>
+
+                    <div class="eq-part hidden" id="l2-step2">
+                        <div class="step-text">
+                            Now: <span id="l2-txt-mid" class="green-text">26</span> - <span id="l2-txt-ones" class="red-text">2</span> = 
+                            <div class="final-box" style="display:inline-flex; width: 80px; height: 60px; font-size:35px;" id="l2-final-ans" onclick="setFocus('l2-final-ans')">?</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="level3-container" style="display:none; width: 100%; flex-direction: column; align-items: center;">
+                <div class="equation-chain">
+                    <div class="eq-part">
+                        <div class="number-box blue-text" id="l3-min">345</div>
+                        <div class="op">-</div>
+                        <div class="number-box red-text" id="l3-sub">123</div>
+                    </div>
+                    
+                    <div class="eq-part" id="l3-step1">
+                        <div class="step-text">
+                            First: <span id="l3-txt-min" class="blue-text">345</span> - <span id="l3-txt-hund" class="red-text">100</span> = 
+                            <div class="mid-input" id="l3-mid1" onclick="setFocus('l3-mid1')">?</div>
+                        </div>
+                    </div>
+
+                    <div class="eq-part hidden" id="l3-step2">
+                        <div class="step-text">
+                            Then: <span id="l3-txt-mid1" class="purple-text">245</span> - <span id="l3-txt-tens" class="red-text">20</span> = 
+                            <div class="mid-input" id="l3-mid2" onclick="setFocus('l3-mid2')">?</div>
+                        </div>
+                    </div>
+
+                    <div class="eq-part hidden" id="l3-step3">
+                        <div class="step-text">
+                            Finally: <span id="l3-txt-mid2" class="green-text">225</span> - <span id="l3-txt-ones" class="red-text">3</span> = 
+                            <div class="final-box" style="display:inline-flex; width: 80px; height: 60px; font-size:35px;" id="l3-final" onclick="setFocus('l3-final')">?</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="keypad">
+                <button class="key" onclick="press(1)">1</button>
+                <button class="key" onclick="press(2)">2</button>
+                <button class="key" onclick="press(3)">3</button>
+                <button class="key" onclick="press(4)">4</button>
+                <button class="key" onclick="press(5)">5</button>
+                <button class="key" onclick="press(6)">6</button>
+                <button class="key" onclick="press(7)">7</button>
+                <button class="key" onclick="press(8)">8</button>
+                <button class="key" onclick="press(9)">9</button>
+                <button class="key" onclick="press(0)">0</button>
+                <button class="key key-action" onclick="press('back')">⌫</button>
+                <button class="key key-action" onclick="press('tab')">TAB</button>
+            </div>
+        </div>
+
+        <div class="visual-panel" id="visual-panel">
+            <div class="panel-label">Visual Aid</div>
+            <div class="block-stage" id="blockStage"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentLevel = 0;
+    let state = {
+        minuend: 0,
+        subtrahend: 0,
+        focus: '',
+        step: 0, 
+        inputs: {}
+    };
+
+    function goHome() {
+        document.getElementById('menu-screen').style.display = 'flex';
+        document.getElementById('game-ui').style.display = 'none';
+        currentLevel = 0;
+    }
+
+    function startLevel(lvl) {
+        currentLevel = lvl;
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'flex';
+        
+        // Toggle Containers
+        document.getElementById('level1-container').style.display = (lvl === 1) ? 'flex' : 'none';
+        document.getElementById('level2-container').style.display = (lvl === 2) ? 'flex' : 'none';
+        document.getElementById('level3-container').style.display = (lvl === 3) ? 'flex' : 'none';
+        
+        // Toggle Visual Panel (Hide for lvl 2 and 3)
+        let ws = document.getElementById('workspace');
+        let vp = document.getElementById('visual-panel');
+        if (lvl === 1) {
+            ws.className = ''; 
+            vp.className = 'visual-panel';
+        } else {
+            ws.className = 'no-visuals';
+            vp.className = 'visual-panel hidden-panel';
+        }
+        
+        generateNewProblem();
+    }
+
+    function generateNewProblem() {
+        let m, s;
+        if (currentLevel === 1) {
+            // Level 1: Bridging (20-99)
+            m = Math.floor(Math.random() * 80) + 20;
+            let u = m % 10;
+            if (u >= 9) { m--; u = m % 10; }
+            let minS = u + 1;
+            let maxS = 9;
+            s = Math.floor(Math.random() * (maxS - minS + 1)) + minS;
+        } else if (currentLevel === 2) {
+            // Level 2: Two Digits
+            s = Math.floor(Math.random() * 30) + 11;
+            m = s + Math.floor(Math.random() * 40) + 5;
+        } else {
+            // Level 3: Three Digits (100-999)
+            // Ensure no borrowing for simplicity? Or standard random?
+            // "Subtract hundreds, then tens..." implies chunking.
+            // Let's generate random 3 digit numbers where Min > Sub
+            s = Math.floor(Math.random() * 300) + 111; // 111 to 411
+            m = s + Math.floor(Math.random() * 300) + 50; 
+        }
+        
+        document.getElementById('inMin').value = m;
+        document.getElementById('inSub').value = s;
+        initDrill();
+    }
+
+    function initDrill() {
+        let m = parseInt(document.getElementById('inMin').value);
+        let s = parseInt(document.getElementById('inSub').value);
+        
+        if (!m || !s || m < s) return;
+
+        state.minuend = m;
+        state.subtrahend = s;
+        state.inputs = {}; 
+        document.getElementById('celebration-area').innerHTML = '';
+        
+        // Clear visuals for Level 1
+        document.getElementById('blockStage').innerHTML = '';
+
+        if (currentLevel === 1) initLevel1(m, s);
+        else if (currentLevel === 2) initLevel2(m, s);
+        else initLevel3(m, s);
+    }
+
+    // --- LEVEL 1 LOGIC ---
+    function initLevel1(m, s) {
+        document.getElementById('l1-min').innerText = m;
+        document.getElementById('l1-sub').innerText = s;
+        
+        if (m % 10 === 0) {
+             state.inputs = { final: '' };
+             state.step = 2; 
+             document.getElementById('l1-splitter').style.display = 'none';
+             document.getElementById('l1-finalPart').className = 'eq-part';
+             document.getElementById('l1-finalPart').style.display = 'flex';
+             resetClass('l1-finalAns');
+             state.focus = 'l1-finalAns';
+             document.getElementById('hintBar').innerText = `Just subtract ${s}!`;
+        } else {
+            let u = m % 10;
+            state.inputs = { bub1: u.toString(), bub2: '', final: '' };
+            state.step = 1;
+            document.getElementById('l1-splitter').style.display = 'block';
+            document.getElementById('l1-splitter').style.opacity = '1';
+            document.getElementById('l1-finalPart').className = 'eq-part hidden';
+            document.getElementById('l1-finalPart').style.display = 'none';
+            
+            spawnBlocks(s, 'blockStage');
+
+            resetClass('l1-bub1'); 
+            resetClass('l1-bub2'); 
+            resetClass('l1-finalAns');
+            
+            document.getElementById('l1-bub1').innerText = u; 
+            document.getElementById('l1-bub1').className = 'split-bubble sb-left locked-bubble';
+
+            state.focus = 'l1-bub2';
+            document.getElementById('hintBar').innerText = `How much more to make ${s}?`;
+        }
+        updateDisplay();
+    }
+
+    // --- LEVEL 2 LOGIC ---
+    function initLevel2(m, s) {
+        document.getElementById('l2-min').innerText = m;
+        document.getElementById('l2-sub').innerText = s;
+        state.inputs = { mid: '', final: '' };
+        state.step = 1;
+
+        document.getElementById('l2-step1').className = 'eq-part';
+        document.getElementById('l2-step1').style.display = 'flex';
+        document.getElementById('l2-step2').className = 'eq-part hidden';
+        document.getElementById('l2-step2').style.display = 'none';
+
+        resetClass('l2-mid-ans');
+        resetClass('l2-final-ans');
+
+        let sTens = Math.floor(s / 10) * 10;
+        document.getElementById('l2-txt-min').innerText = m;
+        document.getElementById('l2-txt-tens').innerText = sTens;
+        
+        state.focus = 'l2-mid-ans';
+        document.getElementById('hintBar').innerText = `First, subtract the Tens (${sTens})`;
+        updateDisplay();
+    }
+
+    // --- LEVEL 3 LOGIC ---
+    function initLevel3(m, s) {
+        document.getElementById('l3-min').innerText = m;
+        document.getElementById('l3-sub').innerText = s;
+        state.inputs = { mid1: '', mid2: '', final: '' };
+        state.step = 1;
+
+        // Reset Steps
+        document.getElementById('l3-step1').className = 'eq-part';
+        document.getElementById('l3-step1').style.display = 'flex';
+        document.getElementById('l3-step2').className = 'eq-part hidden';
+        document.getElementById('l3-step2').style.display = 'none';
+        document.getElementById('l3-step3').className = 'eq-part hidden';
+        document.getElementById('l3-step3').style.display = 'none';
+
+        resetClass('l3-mid1'); resetClass('l3-mid2'); resetClass('l3-final');
+
+        // Text for Step 1
+        let sHund = Math.floor(s / 100) * 100;
+        document.getElementById('l3-txt-min').innerText = m;
+        document.getElementById('l3-txt-hund').innerText = sHund;
+
+        state.focus = 'l3-mid1';
+        document.getElementById('hintBar').innerText = `First, subtract the Hundreds (${sHund})`;
+        updateDisplay();
+    }
+
+
+    function setFocus(id) {
+        if (currentLevel === 1) {
+            if (state.step === 1 && id !== 'l1-bub2') return;
+            if (state.step === 2 && id !== 'l1-finalAns') return;
+        } else if (currentLevel === 2) {
+            if (state.step === 1 && id !== 'l2-mid-ans') return;
+            if (state.step === 2 && id !== 'l2-final-ans') return;
+        } else {
+            // Level 3
+            if (state.step === 1 && id !== 'l3-mid1') return;
+            if (state.step === 2 && id !== 'l3-mid2') return;
+            if (state.step === 3 && id !== 'l3-final') return;
+        }
+        state.focus = id;
+        updateDisplay();
+    }
+
+    function press(key) {
+        if (key === 'tab') return;
+        
+        let valKey = getKeyForFocus(state.focus);
+        if (!valKey) return;
+
+        let currentVal = state.inputs[valKey];
+
+        if (key === 'back') {
+            state.inputs[valKey] = currentVal.slice(0, -1);
+        } else {
+            if (currentVal.length >= 4) return;
+            state.inputs[valKey] += key.toString();
+        }
+        updateDisplay();
+        checkLogic();
+    }
+    
+    function getKeyForFocus(fid) {
+        if(fid === 'l1-bub2') return 'bub2';
+        if(fid === 'l1-finalAns') return 'final';
+        if(fid === 'l2-mid-ans') return 'mid';
+        if(fid === 'l2-final-ans') return 'final';
+        if(fid === 'l3-mid1') return 'mid1';
+        if(fid === 'l3-mid2') return 'mid2';
+        if(fid === 'l3-final') return 'final';
+        return null;
+    }
+
+    function updateDisplay() {
+        if(currentLevel === 1) {
+            safeSetText('l1-bub2', state.inputs.bub2);
+            safeSetText('l1-finalAns', state.inputs.final);
+        } else if(currentLevel === 2) {
+            safeSetText('l2-mid-ans', state.inputs.mid);
+            safeSetText('l2-final-ans', state.inputs.final);
+        } else {
+            safeSetText('l3-mid1', state.inputs.mid1);
+            safeSetText('l3-mid2', state.inputs.mid2);
+            safeSetText('l3-final', state.inputs.final);
+        }
+        highlightFocus();
+    }
+    
+    function safeSetText(id, val) {
+        let el = document.getElementById(id);
+        if(el) el.innerText = val === '' ? '?' : val;
+    }
+
+    function highlightFocus() {
+        let allInputs = document.querySelectorAll('.split-bubble, .final-box, .mid-input');
+        allInputs.forEach(el => {
+            if(!el.classList.contains('locked-bubble')) el.classList.remove('active-input');
+        });
+        let el = document.getElementById(state.focus);
+        if(el) el.classList.add('active-input');
+    }
+
+    function resetClass(id) {
+        let el = document.getElementById(id);
+        if(!el) return;
+        el.classList.remove('correct-input', 'wrong-input', 'active-input');
+        el.style.color = '';
+        el.style.borderColor = '';
+    }
+
+    // --- LOGIC ENGINE ---
+    function checkLogic() {
+        if (currentLevel === 1) checkLevel1();
+        else if (currentLevel === 2) checkLevel2();
+        else checkLevel3();
+    }
+
+    function checkLevel1() {
+        // [Existing Logic]
+        let hint = document.getElementById('hintBar');
+        document.getElementById('l1-bub2').classList.remove('wrong-input');
+        document.getElementById('l1-finalAns').classList.remove('wrong-input');
+
+        if (state.step === 1) {
+            let v1 = parseInt(state.minuend % 10);
+            let v2Str = state.inputs.bub2;
+            if(v2Str === '') return;
+            let v2 = parseInt(v2Str);
+            
+            if(v1 + v2 === state.subtrahend) {
+                document.getElementById('l1-bub2').classList.add('correct-input');
+                document.getElementById('l1-bub1').style.color = '#aaa';
+                spawnBlocks(state.subtrahend, 'blockStage'); // Re-ensure blocks exist
+                animateBlocksSplit(v1, v2);
+
+                setTimeout(() => {
+                    document.getElementById('l1-finalPart').style.display = 'flex';
+                    setTimeout(() => document.getElementById('l1-finalPart').className = 'eq-part', 50);
+                    hint.innerHTML = `First subtract <span style="color:#3498db">${v1}</span>, then subtract <span style="color:#e74c3c">${v2}</span>!`;
+                    state.step = 2;
+                    state.focus = 'l1-finalAns';
+                    updateDisplay();
+                }, 600);
+            } else {
+                hint.innerText = "Try again!";
+                hint.style.color = "var(--red)";
+                document.getElementById('l1-bub2').classList.add('wrong-input');
+            }
+        } else if (state.step === 2) {
+            let finStr = state.inputs.final;
+            if(finStr === '') return;
+            let final = parseInt(finStr);
+            let ans = state.minuend - state.subtrahend;
+            
+            if(final === ans) {
+                document.getElementById('l1-finalAns').classList.add('correct-input');
+                hint.innerHTML = "<span style='color:var(--green)'>CORRECT!</span>";
+                state.step = 3; 
+                triggerCelebration();
+            } else {
+                if(finStr.length >= ans.toString().length) {
+                    document.getElementById('l1-finalAns').classList.add('wrong-input');
+                }
+            }
+        }
+    }
+
+    function checkLevel2() {
+        // [Existing Logic]
+        let hint = document.getElementById('hintBar');
+        resetClass('l2-mid-ans'); resetClass('l2-final-ans');
+
+        if (state.step === 1) {
+            let mStr = state.inputs.mid;
+            if(mStr === '') return;
+            let mVal = parseInt(mStr);
+            let sTens = Math.floor(state.subtrahend / 10) * 10;
+            let correctMid = state.minuend - sTens;
+
+            if (mVal === correctMid) {
+                document.getElementById('l2-mid-ans').classList.add('correct-input');
+                document.getElementById('l2-step2').style.display = 'flex';
+                setTimeout(() => document.getElementById('l2-step2').className = 'eq-part', 50);
+
+                document.getElementById('l2-txt-mid').innerText = correctMid;
+                document.getElementById('l2-txt-ones').innerText = state.subtrahend % 10;
+
+                hint.innerText = `Now, subtract the Ones (${state.subtrahend % 10})`;
+                state.step = 2;
+                state.focus = 'l2-final-ans';
+                updateDisplay();
+            } else {
+                if(mStr.length >= correctMid.toString().length) document.getElementById('l2-mid-ans').classList.add('wrong-input');
+            }
+        }
+        else if (state.step === 2) {
+            let fStr = state.inputs.final;
+            if(fStr === '') return;
+            let fVal = parseInt(fStr);
+            let correctFin = state.minuend - state.subtrahend;
+            if (fVal === correctFin) {
+                document.getElementById('l2-final-ans').classList.add('correct-input');
+                hint.innerHTML = "<span style='color:var(--green)'>CORRECT!</span>";
+                state.step = 3;
+                triggerCelebration();
+            } else {
+                if(fStr.length >= correctFin.toString().length) document.getElementById('l2-final-ans').classList.add('wrong-input');
+            }
+        }
+    }
+
+    function checkLevel3() {
+        let hint = document.getElementById('hintBar');
+        resetClass('l3-mid1'); resetClass('l3-mid2'); resetClass('l3-final');
+
+        // Step 1: Subtract Hundreds
+        if (state.step === 1) {
+            let valStr = state.inputs.mid1;
+            if(valStr === '') return;
+            let val = parseInt(valStr);
+            let sHund = Math.floor(state.subtrahend / 100) * 100;
+            let correct = state.minuend - sHund;
+
+            if (val === correct) {
+                document.getElementById('l3-mid1').classList.add('correct-input');
+                document.getElementById('l3-step2').style.display = 'flex';
+                setTimeout(() => document.getElementById('l3-step2').className = 'eq-part', 50);
+
+                // Setup Step 2 text
+                let sTens = Math.floor((state.subtrahend % 100) / 10) * 10;
+                document.getElementById('l3-txt-mid1').innerText = correct;
+                document.getElementById('l3-txt-tens').innerText = sTens;
+                
+                hint.innerText = `Next, subtract the Tens (${sTens})`;
+                state.step = 2;
+                state.focus = 'l3-mid2';
+                updateDisplay();
+            } else {
+                if(valStr.length >= correct.toString().length) document.getElementById('l3-mid1').classList.add('wrong-input');
+            }
+        }
+        // Step 2: Subtract Tens
+        else if (state.step === 2) {
+            let valStr = state.inputs.mid2;
+            if(valStr === '') return;
+            let val = parseInt(valStr);
+            let sHund = Math.floor(state.subtrahend / 100) * 100;
+            let sTens = Math.floor((state.subtrahend % 100) / 10) * 10;
+            let correct = state.minuend - sHund - sTens;
+
+            if (val === correct) {
+                document.getElementById('l3-mid2').classList.add('correct-input');
+                document.getElementById('l3-step3').style.display = 'flex';
+                setTimeout(() => document.getElementById('l3-step3').className = 'eq-part', 50);
+
+                // Setup Step 3 text
+                let sOnes = state.subtrahend % 10;
+                document.getElementById('l3-txt-mid2').innerText = correct;
+                document.getElementById('l3-txt-ones').innerText = sOnes;
+                
+                hint.innerText = `Finally, subtract the Ones (${sOnes})`;
+                state.step = 3;
+                state.focus = 'l3-final';
+                updateDisplay();
+            } else {
+                if(valStr.length >= correct.toString().length) document.getElementById('l3-mid2').classList.add('wrong-input');
+            }
+        }
+        // Step 3: Final Answer
+        else if (state.step === 3) {
+            let valStr = state.inputs.final;
+            if(valStr === '') return;
+            let val = parseInt(valStr);
+            let correct = state.minuend - state.subtrahend;
+
+            if (val === correct) {
+                document.getElementById('l3-final').classList.add('correct-input');
+                hint.innerHTML = "<span style='color:var(--green)'>CORRECT!</span>";
+                state.step = 4;
+                triggerCelebration();
+            } else {
+                if(valStr.length >= correct.toString().length) document.getElementById('l3-final').classList.add('wrong-input');
+            }
+        }
+    }
+
+    // --- VISUALS ---
+    function spawnBlocks(count, targetId) {
+        // Only used for Level 1 now
+        const stage = document.getElementById(targetId);
+        stage.innerHTML = '';
+        const cols = 2;
+        for(let i=0; i<count; i++) {
+            let b = document.createElement('div');
+            b.className = 'block';
+            b.id = `blk-${i}`;
+            let col = i % cols;
+            let row = Math.floor(i / cols);
+            b.style.left = (80 + col * 28) + 'px';
+            b.style.top = (20 + row * 28) + 'px';
+            stage.appendChild(b);
+        }
+    }
+
+    function animateBlocksSplit(v1, v2) {
+        const total = parseInt(document.getElementById('l1-sub').innerText);
+        for(let i=0; i<total; i++) {
+            let b = document.getElementById(`blk-${i}`);
+            if(!b) continue;
+            let isLeft = (i < v1);
+            let tx = isLeft ? 20 : 130;
+            let row = Math.floor((isLeft ? i : i-v1)/2);
+            let col = (isLeft ? i : i-v1)%2;
+            b.style.transform = `translate(${tx + col*28 - parseInt(b.style.left)}px, ${250 + row*28 - parseInt(b.style.top)}px)`;
+            b.style.borderColor = '#fff';
+        }
+    }
+
+    function triggerCelebration() {
+        const area = document.getElementById('celebration-area');
+        area.innerHTML = '';
+        const colors = ['var(--red)', 'var(--blue)', 'var(--green)', 'var(--yellow)', 'var(--purple)'];
+        for(let i=0; i<15; i++) {
+            let b = document.createElement('div');
+            b.className = 'balloon';
+            b.style.left = Math.random() * 90 + '%';
+            b.style.background = colors[Math.floor(Math.random() * colors.length)];
+            b.style.animationDuration = (3 + Math.random() * 2) + 's'; 
+            b.style.animationDelay = (Math.random() * 0.5) + 's';
+            area.appendChild(b);
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter') { e.preventDefault(); return; }
+        if(e.key >= '0' && e.key <= '9') press(parseInt(e.key));
+        if(e.key === 'Backspace') press('back');
+        if(e.key === 'Tab') { e.preventDefault(); press('tab'); }
+    });
+</script>
+
+<script src="../assets/js/app.js"></script>
+</body>
+</html>
